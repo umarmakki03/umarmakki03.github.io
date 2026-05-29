@@ -10,7 +10,7 @@ M.S. Robotics @ Northeastern University.
 
 ## About this site
 
-A single self-contained interactive experience that runs entirely in the browser — a controllable, fully articulated robotic arm, a transforming robot, and an autonomous pick-and-place demo, all rendered in real time.
+A single self-contained interactive experience that runs entirely in the browser  a controllable, fully articulated robotic arm, a transforming robot, and an autonomous pick&place demo, all rendered in real time.
 
 - **Move your cursor** — the robotic arm tracks it in real time
 - **Spacebar** — the robot waves
