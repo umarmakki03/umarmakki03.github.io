@@ -1,0 +1,4117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Umar Hassan Makki Mohammed - Robotics Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A0B;
+    --bg-2: #131315;
+    --bg-3: #1C1C1F;
+    --ink: #F5E6D3;
+    --ink-bright: #FFFFFF;
+    --ink-dim: #8A8A8A;
+    --ink-faint: #4A4A4D;
+    --red: #FF2D2D;
+    --red-deep: #C71F1F;
+    --red-soft: rgba(255, 45, 45, 0.12);
+    --bone: #F5E6D3;
+    --bone-soft: rgba(245, 230, 211, 0.08);
+    --border: rgba(245, 230, 211, 0.08);
+    --border-bright: rgba(255, 45, 45, 0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; overflow: hidden; height: 100%; }
+  ::selection { background: var(--red); color: var(--bone); }
+
+  /* ---------- Loader with typed log ---------- */
+  /* ---------- Canvas ---------- */
+  #scene { position: fixed; inset: 0; z-index: 1; cursor: none; }
+  #scene.grabbing { cursor: grabbing; }
+  #scene canvas { display: block; }
+
+  /* ---------- Reticle ---------- */
+  .reticle {
+    position: fixed; pointer-events: none; z-index: 60;
+    width: 22px; height: 22px;
+    transform: translate(-50%, -50%);
+    opacity: 0; transition: opacity 0.3s, transform 0.15s;
+    mix-blend-mode: difference;
+  }
+  .reticle.visible { opacity: 1; }
+  .reticle::before, .reticle::after { content: ''; position: absolute; background: var(--bone); }
+  .reticle::before { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
+  .reticle::after { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%); }
+  .reticle .dot {
+    position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+    background: var(--red); border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--red);
+  }
+  body.over-interactive .reticle { transform: translate(-50%, -50%) scale(2.6); }
+  body.grabbing-prop .reticle .dot { background: var(--bone); box-shadow: 0 0 10px var(--bone); }
+
+  /* ---------- Top bar ---------- */
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 22px 32px; pointer-events: none;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; pointer-events: auto; }
+  .brand-mark { width: 18px; height: 18px; position: relative; flex-shrink: 0; animation: markPulse 3.5s ease-in-out infinite; }
+  @keyframes markPulse { 0%,100% { opacity: 0.65; } 50% { opacity: 1; } }
+  .brand-mark::before, .brand-mark::after { content: ''; position: absolute; background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .brand-mark::before { left: 0; top: 50%; width: 100%; height: 1px; transform: translateY(-50%); }
+  .brand-mark::after { left: 50%; top: 0; width: 1px; height: 100%; transform: translateX(-50%); }
+  .brand-stack { display: flex; flex-direction: column; gap: 4px; }
+  .brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: -0.025em; color: var(--bone); line-height: 1; }
+  .brand-name em { color: var(--red); font-style: normal; }
+  .brand-role { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-dim); letter-spacing: 0.22em; text-transform: uppercase; }
+
+  .top-right-bar { display: flex; gap: 10px; pointer-events: auto; align-items: center; }
+
+  /* Toolbar buttons (audio, demo) */
+  .toolbar-btn {
+    background: rgba(13,13,15,0.6); backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    color: var(--ink-dim); font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.18em; padding: 7px 12px; cursor: pointer;
+    text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+    transition: all 0.25s;
+  }
+  .toolbar-btn:hover { color: var(--ink); border-color: var(--border-bright); }
+  .toolbar-btn.on { color: var(--red); border-color: var(--red); }
+  .toolbar-btn .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint); }
+  .toolbar-btn.on .dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .toolbar-btn .icon { font-family: monospace; font-size: 10px; }
+
+  /* HUD readout & centered title removed - name now lives in the brand stack */
+
+  /* ---------- Vignette overlay ---------- */
+  .vignette {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 32%, rgba(0,0,0,0.7) 100%);
+  }
+  body.is-mobile .vignette { display: none; }
+
+  /* ---------- Transformation flash overlay ---------- */
+  .flash {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 40;
+    background: radial-gradient(ellipse at center, rgba(255,80,80,0.85), rgba(255,45,45,0.3) 40%, transparent 70%);
+    opacity: 0;
+    mix-blend-mode: screen;
+  }
+
+  /* ---------- Barcode scan overlay (active during the drone's screen scan) ---------- */
+  .scan-overlay {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 41;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+  .scan-overlay.active { opacity: 1; }
+
+  /* Original horizontal scan line + band - restored */
+  .scan-line {
+    position: absolute; left: 0; right: 0;
+    top: 0;
+    height: 3px;
+    background: linear-gradient(to bottom,
+      rgba(255, 45, 45, 0) 0%,
+      rgba(255, 45, 45, 1) 50%,
+      rgba(255, 45, 45, 0) 100%);
+    box-shadow:
+      0 0 12px rgba(255, 45, 45, 0.9),
+      0 0 32px rgba(255, 45, 45, 0.6),
+      0 0 64px rgba(255, 45, 45, 0.3);
+  }
+  .scan-band {
+    position: absolute; left: 0; right: 0;
+    top: 0;
+    height: 140px;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(255, 45, 45, 0.05) 0px,
+        rgba(255, 45, 45, 0.05) 1px,
+        transparent 1px,
+        transparent 4px
+      ),
+      linear-gradient(to bottom,
+        rgba(255, 45, 45, 0) 0%,
+        rgba(255, 45, 45, 0.12) 40%,
+        rgba(255, 45, 45, 0.18) 70%,
+        rgba(255, 45, 45, 0) 100%);
+    mix-blend-mode: screen;
+  }
+
+  /* Horizontal scan-grid behind everything (CRT vibe) */
+  .scan-grid {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 45, 45, 0.05) 0px,
+      rgba(255, 45, 45, 0.05) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  /* Edge frame markers (corner brackets, like a viewfinder) */
+  .scan-frame {
+    position: absolute; inset: 36px;
+    border: 1px solid rgba(255, 45, 45, 0.18);
+    pointer-events: none;
+  }
+  .scan-corner-tl { position: absolute; inset: 0; pointer-events: none; }
+  .scan-frame::before, .scan-frame::after,
+  .scan-corner-tl::before, .scan-corner-tl::after {
+    content: ''; position: absolute;
+    width: 28px; height: 28px;
+    border-color: #FF2D2D; border-style: solid; border-width: 0;
+  }
+  .scan-frame::before { top: -2px; left: -2px; border-top-width: 2px; border-left-width: 2px; }
+  .scan-frame::after  { top: -2px; right: -2px; border-top-width: 2px; border-right-width: 2px; }
+  .scan-corner-tl::before { bottom: -2px; left: -2px; border-bottom-width: 2px; border-left-width: 2px; }
+  .scan-corner-tl::after  { bottom: -2px; right: -2px; border-bottom-width: 2px; border-right-width: 2px; }
+
+  /* Status text top-left */
+  .scan-status {
+    position: absolute; top: 60px; left: 60px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #FF2D2D;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    line-height: 1.7;
+  }
+  .scan-status .ok { color: #F5E6D3; }
+  .scan-status .dim { color: rgba(255, 45, 45, 0.45); }
+
+  /* Data stream right side */
+  .scan-data {
+    position: absolute; top: 60px; right: 60px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: rgba(255, 45, 45, 0.7);
+    text-align: right;
+    line-height: 1.6;
+    letter-spacing: 0.1em;
+  }
+  .scan-data div { min-height: 14px; }
+  .scan-data .glitch { color: #F5E6D3; }
+  .scan-data .verify { color: #F5E6D3; }
+  .scan-data .warn   { color: #FFA82D; text-shadow: 0 0 6px rgba(255, 168, 45, 0.5); }
+
+  /* Subtle global red tint behind the scan */
+  .scan-tint {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(255,45,45,0.06), transparent 70%);
+    mix-blend-mode: screen;
+  }
+
+  /* "SCAN COMPLETE" flash card */
+  .scan-complete {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 0.35em;
+    color: #F5E6D3;
+    background: rgba(10, 10, 11, 0.85);
+    border: 1px solid #FF2D2D;
+    padding: 18px 38px;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    box-shadow: 0 0 40px rgba(255, 45, 45, 0.4);
+  }
+  .scan-complete.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    animation: scanCompleteFlash 0.5s ease-out;
+  }
+  @keyframes scanCompleteFlash {
+    0% {
+      border-color: #2DD9FF;
+      box-shadow: 0 0 60px rgba(45, 217, 255, 0.85), 0 0 100px rgba(45, 217, 255, 0.4);
+      color: #2DD9FF;
+    }
+    60% {
+      border-color: #2DD9FF;
+      box-shadow: 0 0 30px rgba(45, 217, 255, 0.4), 0 0 60px rgba(255, 45, 45, 0.4);
+    }
+    100% {
+      border-color: #FF2D2D;
+      box-shadow: 0 0 40px rgba(255, 45, 45, 0.4);
+      color: #F5E6D3;
+    }
+  }
+  .scan-complete em { color: #FF2D2D; font-style: normal; }
+
+  /* ---------- Bottom bar with hints ---------- */
+  .bottom-bar {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    z-index: 12; pointer-events: auto;
+    display: flex; gap: 24px; align-items: center;
+  }
+  .bottom-bar a, .bottom-bar .pill {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--bone); letter-spacing: 0.2em; text-transform: uppercase;
+    text-decoration: none; transition: color 0.3s;
+  }
+  .bottom-bar a:hover { color: var(--red); }
+  .bottom-bar .pill { color: var(--ink-dim); }
+  .bottom-bar .pill b { color: var(--bone); font-weight: 500; }
+  .bottom-bar .divider { width: 1px; height: 11px; background: var(--border); }
+
+  /* ---------- Demo status bar ---------- */
+  .demo-status {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 28;
+    pointer-events: none;
+    transform: translateY(-100%); transition: transform 0.4s ease;
+  }
+  .demo-status.active { transform: translateY(0); }
+  .demo-status .bar { width: 100%; height: 2px; background: var(--border); position: relative; }
+  .demo-status .bar::after {
+    content: ''; position: absolute; left: 0; top: 0; height: 100%;
+    background: var(--red); box-shadow: 0 0 12px var(--red);
+    width: var(--prog, 0%); transition: width 0.2s linear;
+  }
+  .demo-status .label {
+    padding: 6px 32px 8px; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--bone); background: rgba(10,10,11,0.7); backdrop-filter: blur(10px);
+    display: flex; justify-content: space-between;
+  }
+  .demo-status .label .red { color: var(--red); }
+
+  /* ---------- Interaction hint ---------- */
+  .interaction-hint {
+    position: fixed; left: 50%; top: calc(100vh - 95px);
+    transform: translateX(-50%); z-index: 16; pointer-events: none;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--ink-faint); letter-spacing: 0.22em; text-transform: uppercase;
+    background: rgba(13,13,15,0.6); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); padding: 8px 14px;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  .interaction-hint.visible { opacity: 1; }
+  .interaction-hint span { color: var(--red); }
+
+  /* ---------- Modal ---------- */
+  .modal-bg {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(10, 10, 11, 0.92); backdrop-filter: blur(24px);
+    display: flex; align-items: center; justify-content: center; padding: 40px;
+    opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0.4s;
+  }
+  .modal-bg.open { opacity: 1; visibility: visible; }
+  .modal {
+    width: 100%; max-width: 920px; max-height: 88vh; overflow-y: auto;
+    background: var(--bg-2); border: 1px solid var(--border-bright);
+    padding: 56px; position: relative;
+    transform: translateY(20px); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .modal-bg.open .modal { transform: translateY(0); }
+  .modal-close { position: absolute; top: 20px; right: 20px; background: transparent; border: 1px solid var(--border); color: var(--ink-dim); width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 18px; transition: all 0.3s; }
+  .modal-close:hover { color: var(--red); border-color: var(--red); transform: rotate(90deg); }
+  .modal-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 16px; }
+  .modal h2 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(32px, 4vw, 52px); font-weight: 500; letter-spacing: -0.03em; line-height: 1; margin-bottom: 32px; color: var(--bone); }
+  .modal h2 em { font-style: normal; color: var(--red); }
+  .modal-body { color: var(--bone); font-size: 16px; line-height: 1.7; }
+  .modal-body p + p { margin-top: 1em; }
+  .modal-body strong { color: var(--red); font-weight: 500; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 24px; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .meta-item { border-left: 1px solid var(--border-bright); padding-left: 14px; }
+  .meta-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 6px; }
+  .meta-value { font-family: 'Space Grotesk', sans-serif; font-size: 16px; color: var(--bone); font-weight: 500; }
+  .edu-list { margin-top: 28px; }
+  .edu-row { display: grid; grid-template-columns: 140px 1fr auto; gap: 24px; align-items: baseline; padding: 20px 0; border-top: 1px solid var(--border); }
+  .edu-row:last-child { border-bottom: 1px solid var(--border); }
+  .edu-year { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); letter-spacing: 0.1em; }
+  .edu-main h3 { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 500; margin-bottom: 4px; letter-spacing: -0.02em; color: var(--bone); }
+  .edu-main p { font-size: 13px; color: var(--ink-dim); }
+  .edu-loc { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-dim); letter-spacing: 0.05em; }
+  .now-list { margin-top: 8px; }
+  .now-row { display: grid; grid-template-columns: 120px 1fr; gap: 24px; align-items: start; padding: 22px 0; border-top: 1px solid var(--border); }
+  .now-row:last-child { border-bottom: 1px solid var(--border); }
+  .now-tag { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--red); letter-spacing: 0.18em; padding-top: 4px; }
+  .now-main h4 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 500; margin-bottom: 6px; letter-spacing: -0.01em; color: var(--bone); }
+  .now-main p { font-size: 13px; color: var(--ink-dim); line-height: 1.55; }
+  .now-status { display: inline-block; margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--bone); border: 1px solid var(--border-bright); padding: 3px 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .proj-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .proj-item { border: 1px solid var(--border); padding: 22px; position: relative; cursor: pointer; transition: all 0.3s; overflow: hidden; }
+  .proj-item::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--red); transform: scaleY(0); transform-origin: top; transition: transform 0.4s; }
+  .proj-item:hover { border-color: var(--border-bright); }
+  .proj-item:hover::after { transform: scaleY(1); }
+  .proj-item .proj-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px; }
+  .proj-item h3 { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 500; line-height: 1.2; margin-bottom: 8px; letter-spacing: -0.02em; color: var(--bone); }
+  .proj-item p { font-size: 12.5px; line-height: 1.55; color: var(--ink-dim); margin-bottom: 14px; }
+  .chip { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; padding: 3px 7px; border: 1px solid var(--border); color: var(--ink-dim); letter-spacing: 0.05em; text-transform: uppercase; display: inline-block; margin-right: 4px; margin-top: 4px; }
+  .proj-detail { display: none; }
+  .proj-detail.open { display: block; }
+  .proj-detail .back-btn { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 1px solid var(--border); color: var(--ink-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 8px 12px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.25s; margin-bottom: 24px; }
+  .proj-detail .back-btn:hover { color: var(--red); border-color: var(--red); }
+  .proj-detail ul { margin: 16px 0 16px 20px; }
+  .proj-detail li { margin-bottom: 8px; color: var(--ink-dim); }
+  .proj-detail li::marker { color: var(--red); }
+  .skills-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; }
+  .skill-block h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .skill-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13.5px; color: var(--bone); }
+  .skill-bar { width: 50px; height: 2px; background: var(--border); position: relative; }
+  .skill-bar::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; background: var(--red); box-shadow: 0 0 6px var(--red); width: var(--pct, 80%); }
+
+  /* ---------- Disco mode overlay ---------- */
+  .disco-overlay {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 25; pointer-events: none;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--red); letter-spacing: 0.3em; text-transform: uppercase;
+    background: rgba(10,10,11,0.6); padding: 4px 10px;
+    border: 1px solid var(--red);
+    opacity: 0; transition: opacity 0.3s;
+    animation: discoFlash 0.4s steps(2) infinite;
+  }
+  .disco-overlay.visible { opacity: 1; }
+  @keyframes discoFlash { 50% { color: var(--bone); border-color: var(--bone); } }
+
+  /* ---------- Mobile fallback ---------- */
+  .mobile-hero { display: none; position: fixed; inset: 0; z-index: 1;
+    background: radial-gradient(ellipse at center, rgba(255,45,45,0.12), transparent 60%), var(--bg);
+    align-items: center; justify-content: center; padding: 40px;
+  }
+  .mobile-hero .mh-inner { text-align: center; }
+  .mobile-hero h1 { font-family: 'Space Grotesk', sans-serif; font-size: 36px; font-weight: 500; line-height: 1.1; letter-spacing: -0.03em; color: var(--bone); margin-bottom: 16px; }
+  .mobile-hero h1 em { font-style: normal; color: var(--red); }
+  .mobile-hero p { font-size: 14px; line-height: 1.7; color: var(--ink-dim); max-width: 360px; margin: 0 auto 24px; }
+  .mobile-hero .mh-mail { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--bone); letter-spacing: 0.15em; border-bottom: 1px solid var(--red); text-decoration: none; padding-bottom: 4px; }
+  .mobile-hero::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,45,45,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,45,45,0.04) 1px, transparent 1px); background-size: 40px 40px; mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%); }
+
+  body.is-mobile #scene, body.is-mobile .reticle,
+  body.is-mobile .top-right-bar,
+  body.is-mobile .interaction-hint, body.is-mobile .bottom-bar,
+  body.is-mobile .demo-status { display: none !important; }
+  body.is-mobile .brand-stack { display: none; }
+  body.is-mobile .mobile-hero { display: flex; }
+</style>
+</head>
+<body>
+
+<!-- 3D scene -->
+<div id="scene"></div>
+
+<!-- Vignette overlay -->
+<div class="vignette"></div>
+
+<!-- Mobile fallback -->
+<div class="mobile-hero">
+  <div class="mh-inner">
+    <h1>Umar Hassan<br>Makki Mohammed<br><em>Robotics Engineer.</em></h1>
+    <p>M.S. Robotics @ Northeastern - building intelligent systems that move through the physical world.</p>
+    <a href="mailto:mohammed.umar@northeastern.edu" class="mh-mail">mohammed.umar@northeastern.edu</a>
+  </div>
+</div>
+
+<!-- Reticle -->
+<div class="reticle" id="reticle"><div class="dot"></div></div>
+
+<!-- Demo status -->
+<div class="demo-status" id="demo-status">
+  <div class="label">
+    <span><span class="red">●</span> DEMO MODE - <span id="demo-step-label">INITIALIZING</span></span>
+    <span id="demo-step-num">STEP 0 / 0</span>
+  </div>
+  <div class="bar"><span></span></div>
+</div>
+
+<!-- Disco overlay -->
+<div class="disco-overlay" id="disco-overlay">⚡ DISCO MODE ⚡</div>
+
+<!-- Transformation flash overlay -->
+<div class="flash" id="flash"></div>
+
+<!-- Barcode scan overlay (used during the drone's screen scan) -->
+<div class="scan-overlay" id="scan-overlay">
+  <div class="scan-tint"></div>
+  <div class="scan-grid"></div>
+  <div class="scan-frame"><div class="scan-corner-tl"></div></div>
+  <div class="scan-data" id="scan-data"></div>
+  <div class="scan-band" id="scan-band"></div>
+  <div class="scan-line" id="scan-line"></div>
+  <div class="scan-complete" id="scan-complete">&gt; SCAN <em>COMPLETE</em></div>
+</div>
+
+<!-- Top bar -->
+<header class="top-bar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-stack">
+      <div class="brand-name">Umar Hassan Makki <em>Mohammed.</em></div>
+      <div class="brand-role">M.S. ROBOTICS · NORTHEASTERN · BOSTON</div>
+    </div>
+  </div>
+  <div class="top-right-bar">
+    <button class="toolbar-btn" id="transform-btn">
+      <span class="icon">⚡</span><span>Transform</span>
+    </button>
+    <button class="toolbar-btn" id="demo-btn">
+      <span class="icon">▶</span><span>Run Demo</span>
+    </button>
+    <button class="toolbar-btn" id="audio-toggle">
+      <span class="dot"></span><span>Audio</span>
+    </button>
+  </div>
+</header>
+
+<!-- HUD readout removed per user request -->
+
+<!-- Title now lives inside the brand stack in the top-left -->
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <a href="mailto:mohammed.umar@northeastern.edu">mohammed.umar@northeastern.edu</a>
+  <div class="divider"></div>
+  <a href="https://www.linkedin.com/in/umar-hassan-makki-mohammed-981984389/" target="_blank" rel="noopener">LinkedIn ↗</a>
+  <a href="https://github.com/umarmakki03" target="_blank" rel="noopener">GitHub ↗</a>
+  <a href="#" target="_blank" rel="noopener">Résumé ↗</a>
+  <div class="divider"></div>
+  <span class="pill"><b>Space</b> wave · <b>Click</b> object · <b>Drag</b> arm</span>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">×</button>
+    <div class="modal-tag" id="modal-tag"></div>
+    <h2 id="modal-title"></h2>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+
+<script>
+/* ============================================================
+   MOBILE CHECK
+   ============================================================ */
+const isCoarse = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 1024;
+if (isCoarse) document.body.classList.add('is-mobile');
+
+/* ============================================================
+   DATA
+   ============================================================ */
+const PROJECTS = [
+
+  { tag: 'AUTONOMY · SLAM', title: 'GPS-Denied Drone for 3D Cave Mapping', desc: 'Full-stack ROS 2 system - LiDAR-inertial SLAM, OctoMap, frontier exploration, and mineral classification inside a simulated DARPA SubT cave.', stack: ['ROS 2','LIO-SAM','RTAB-Map','OctoMap','Nav2','Python'],
+    body: `<img src="https://github.com/umarmakki03/GPS-Denied-Drone-Navigation-for-3D-Mapping-and-Mineral-Detection/raw/main/assets/Project_overview.jpeg" style="width:100%;border-radius:6px;margin:0 0 20px 0;" alt="Cave world, exploration trajectory, LiDAR scans, and 3D point cloud" />
+<p>A complete GPS-denied autonomous drone system that builds a 3D map of unknown underground tunnels from scratch, localizes itself in real time, and collects georeferenced spectral data for mineral identification - all without any GPS signal.</p>
+<p>Built on ROS 2 Humble in Gazebo Classic 11 using DARPA SubT Jenolan cave meshes. <strong>LIO-SAM</strong> handles primary LiDAR-inertial SLAM via factor-graph optimization with Scan Context loop closure; <strong>RTAB-Map</strong> serves as a fallback for featureless corridors. <strong>OctoMap</strong> builds a probabilistic 3D occupancy grid that <strong>Nav2</strong> uses for path planning, with frontier-based exploration selecting new goals autonomously. A spectral classifier matches simulated NIR returns against the USGS Spectral Library v7, publishes detections as colored 3D bounding boxes via MarkerArray, and clusters them with DBSCAN.</p>
+<ul>
+<li><strong>100%</strong> waypoint coverage - all 114 frontier goals reached autonomously</li>
+<li><strong>10,578</strong>-node SLAM graph with multi-junction loop closure; full 3D PLY reconstruction</li>
+<li><strong>5 / 5</strong> target minerals detected at <strong>81.4 – 92.8%</strong> confidence (chalcopyrite, hematite, malachite, quartz, limestone)</li>
+<li><strong>~0.88×</strong> real-time factor in geometrically dense cave sections</li>
+</ul>
+<p style="color:var(--ink-dim);font-size:13px;margin-top:14px;">5-person team · IEEE-format paper in repo</p>
+<p style="margin-top:14px;"><a href="https://github.com/umarmakki03/GPS-Denied-Drone-Navigation-for-3D-Mapping-and-Mineral-Detection" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none;border-bottom:1px solid var(--red);">View repo ↗</a></p>` },
+
+  { tag: 'PERCEPTION · DEEP LEARNING', title: 'PGTP-Net - Pose-Guided Trajectory Prediction', desc: 'Real-time pedestrian trajectory prediction using 3D body pose to anticipate intent ~1 second earlier than position-only methods.', stack: ['PyTorch','LSTM','Transformer','CVAE','RTMPose','SMPL'],
+    body: `<img src="https://github.com/umarmakki03/Pose-Guided-Trajectory-Prediction-Network-PGTP-Net/raw/main/assets/PoseGudedTrajectory_arch.jpg" style="width:100%;border-radius:6px;margin:0 0 20px 0;" alt="PGTP-Net architecture diagram" />
+<p>PGTP-Net predicts pedestrian trajectories by fusing past 2D position history with estimated 3D body pose. The hypothesis: postural cues - torso rotation, weight shifting, forward lean - reveal movement intent <strong>0.5 – 1.2 seconds</strong> before that intent shows up as a position change. Traditional trajectory predictors treat pedestrians as point masses, discarding ~90% of available visual information about body configuration.</p>
+<p>Dual-stream architecture: a Social-LSTM with attention-based pooling encodes past trajectories, a Transformer encodes pose keypoint sequences, and the fused representation conditions a CVAE decoder that generates K=20 candidate futures over a 4.8-second horizon. Trained on JTA (synthetic GTA-V data with ground-truth 3D poses) and ETH/UCY (real-world, with estimated 2D poses). RTMPose + SMPL fitting was validated against Human3.6M.</p>
+<ul>
+<li><strong>35 – 46%</strong> ADE/FDE reduction on JTA with ground-truth 3D poses</li>
+<li><strong>25 – 28%</strong> improvement on ETH/UCY with estimated 2D poses</li>
+<li>Real-time inference suitable for autonomous-navigation deployment</li>
+</ul>
+<p style="color:var(--ink-dim);font-size:13px;margin-top:14px;">4-person team · <a href="https://drive.google.com/file/d/1iJI7K4tVCSCr35mgh5IF3osNrfcLU3Rl/preview" target="_blank" rel="noopener" style="color:var(--bone);">Paper ↗</a></p>
+<p style="margin-top:14px;"><a href="https://github.com/umarmakki03/Pose-Guided-Trajectory-Prediction-Network-PGTP-Net" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none;border-bottom:1px solid var(--red);">View repo ↗</a></p>` },
+  { tag: 'MANIPULATION · IMITATION LEARNING · VISION', title: 'MultiView ACT UR5 Servoing', desc: 'Hybrid pipeline for autonomous fiber-optic cable insertion on a UR5e arm - ACT imitation learning + multi-view perception + closed-loop visual servoing. Built for the AI for Industry Challenge 2026 (Intrinsic).', stack: ['ROS 2','PyTorch','LeRobot ACT','YOLOv8-OBB','PnP','Docker'],
+    body: `<img src="https://github.com/umarmakki03/multiview-act-ur5-servoing/raw/main/assets/ur5_Servo_ACT_policy.gif" style="width:100%;border-radius:6px;margin:0 0 20px 0;" alt="UR5e arm executing live cable insertion under the MultiViewACTPolicy" />
+<p>A UR5e arm autonomously routes a fiber-optic cable and inserts SFP and SC connectors into ports on a randomized task board. <strong>Sub-mm clearances. Contact-rich manipulation. Heavy scene randomization.</strong> Built for the <a href="https://github.com/intrinsic-dev/aic" target="_blank" rel="noopener" style="color:var(--bone);">AI for Industry Challenge 2026</a> - an open robotics competition organized by <a href="https://www.intrinsic.ai/" target="_blank" rel="noopener" style="color:var(--bone);">Intrinsic</a> (Alphabet).</p>
+
+<p>The hypothesis driving the architecture: <strong>imitation policies are excellent local controllers but unreliable global planners; geometric perception is the inverse.</strong> Instead of picking one, the pipeline layers them across three tiers.</p>
+
+<ul>
+<li><strong>Tier 1 - ACT policy</strong>: LeRobot's Action Chunking Transformer trained on 302 teleop episodes across 5 rails and SC ports. 100k steps, ~3 hrs on a single RTX 4070. Used as the contact-dynamics primitive for the final 10 mm of insertion.</li>
+<li><strong>Tier 2 - Multi-view scene perception</strong>: YOLOv8s-OBB + PnP recovers 6-DoF port poses from wrist cameras. Trained on <strong>5,160 auto-labeled samples</strong> - no human annotation. Labels generated by projecting ground-truth port poses through camera intrinsics. <strong>mAP50 = 0.965</strong>. An 8-waypoint survey rectangle gathers multi-view detections; clustering + rail-spacing constraint satisfaction builds a world-frame NIC registry with mount-index assignment.</li>
+<li><strong>Tier 3 - Cable-aware visual servoing</strong>: Closed-loop image-based servo with YOLO and registry-fallback modes; world-pose lock rejects "latch-onto-neighbor" detections. Failure-aware descent distinguishes cable-tension stalls from real rim contact. Mode-gated spiral recovery (6 spirals + directional nudges) covers residual offsets.</li>
+</ul>
+
+<img src="https://github.com/umarmakki03/multiview-act-ur5-servoing/raw/main/assets/YoloLogs/center_00001.jpg" style="width:100%;border-radius:6px;margin:18px 0;" alt="YOLOv8s-OBB oriented bounding box detections of SFP/SC ports from the center wrist camera" />
+
+<p>Single most important debugging insight: <strong>YOLO-OBB corner ordering is non-canonical</strong> - the 4-corner output isn't consistent across box orientations. The solver tries all 4 cyclic permutations and picks the one with lowest PnP reprojection error. Without this, you get 90°/180°/270° rotation errors that destroy downstream planning.</p>
+
+<p style="color:var(--ink-dim);font-size:13px;margin-top:14px;">AI for Industry Challenge 2026 - Intrinsic (Alphabet) · Team ATOMIC · Qualification Phase</p>
+<p style="margin-top:14px;"><a href="https://github.com/umarmakki03/multiview-act-ur5-servoing" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none;border-bottom:1px solid var(--red);">View repo ↗</a></p>` },
+
+  { tag: 'REINFORCEMENT LEARNING', title: 'Curiosity-Driven Exploration in Atari Adventure', desc: 'Three curiosity-augmented deep RL approaches on Atari Adventure - arguably the hardest sparse-reward environment in the ALE. 120M+ steps total.', stack: ['PyTorch','Gymnasium','ALE','PPO+RND','DQN+ICM','Rainbow'],
+    body: `<img src="https://github.com/umarmakki03/Curiosity-driven-exploration-atari-adventure/raw/main/assets/Agent_Walkthrough.gif" style="width:100%;border-radius:6px;margin:0 0 20px 0;" alt="Agent exploring Atari Adventure rooms" />
+<p>Atari Adventure (1980) - arguably the first open-world video game - delivers a single +1 reward only after completing a strict 7-step prerequisite chain: find the gold key, unlock the castle, retrieve the sword, slay the dragon, get the black key, recover the chalice, return it. Random policies make zero meaningful progress. Three independent algorithm tracks across <strong>120M+ training steps</strong>; my track was <strong>PPO + Random Network Distillation with curriculum learning</strong>.</p>
+<p>The critical breakthrough was a three-phase curriculum using <code>setRAM()</code> to inject spawn state: phase 0 spawn holding the gold key, phase 1 with the sword, phase 2 empty inventory. R07 (first curriculum run) produced <strong>2,394 sword pickups in 228k steps</strong> - more than the preceding 25M+ end-to-end training steps combined. Phase 0 castle-entry stabilized at <strong>27%</strong> after the oscillation guard fix.</p>
+<p>Central finding: intrinsic motivation alone cannot bridge long prerequisite chains. Five of seven failure modes (room oscillation, wrong RAM addresses, NOOP exploitation, greedy-policy collapse, dragon-mouth oscillation) appeared independently across all three tracks - they are properties of the domain, not the algorithm. Written up in <strong>AAAI conference format</strong>.</p>
+<p style="color:var(--ink-dim);font-size:13px;margin-top:14px;">3-person team</p>
+<p style="margin-top:14px;color:var(--bone);font-size:14px;"><strong style="color:var(--red);">My role -</strong> Owned the <strong>PPO + Random Network Distillation</strong> track end-to-end, including the three-phase curriculum, RAM-based state extraction, reward shaping, and the oscillation-exploit fix. 12 deliberate training runs across the track.</p>
+<p style="margin-top:14px;"><a href="https://github.com/umarmakki03/Curiosity-driven-exploration-atari-adventure" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none;border-bottom:1px solid var(--red);">View repo ↗</a></p>` },
+
+  { tag: 'MANIPULATION · KINEMATICS', title: '6-DOF UR3 Robot - Forward &amp; Inverse Kinematics', desc: 'Forward kinematics, damped least-squares IK, and task-space trajectory tracking on a UR3 manipulator. Hexagon, ellipse, and lemniscate paths.', stack: ['Python','NumPy','Matplotlib','Jacobian','DLS-IK','Monte Carlo'],
+    body: `<p>A from-scratch kinematic modeling and simulation framework for the Universal Robots <strong>UR3 6-DOF</strong> collaborative manipulator. Implements forward kinematics directly from geometric link relationships (no DH matrices), finite-difference Jacobian estimation, and a <strong>damped least-squares inverse kinematics</strong> solver:</p>
+<p style="font-family:'JetBrains Mono',monospace;background:rgba(255,255,255,.04);padding:10px 14px;border-radius:4px;font-size:13px;color:var(--bone);">Δq = Jᵀ (J Jᵀ + λI)⁻¹ e</p>
+<p>where <code>e</code> is the end-effector position error and <code>λ</code> is an adaptive damping factor that scales with error magnitude to stay stable near singularities. Per-step updates are clipped to ensure smooth convergence.</p>
+<p>On top of the IK solver, the system tracks three task-space trajectories - <strong>hexagonal</strong>, <strong>elliptical</strong>, and <strong>planar infinity (lemniscate)</strong> - by sampling Cartesian waypoints, resampling at equal intervals, and solving IK at each point. The full reachable workspace is visualized via Monte Carlo sampling over the joint space.</p>
+<p style="color:var(--ink-dim);font-size:13px;margin-top:14px;">solo project</p>` },
+
+  { tag: 'EMBEDDED · IoT', title: 'Multi-Input Robotic Arm - IoT Hackathon', desc: 'Robotic arm controlled via joystick, keypad, and IR sensor on a Nordic nRF7002-DK - real-time multi-modal control with collision detection.', stack: ['nRF7002-DK','Zephyr RTOS','C','ADC','GPIO','PWM'],
+    body: `<img src="https://github.com/umarmakki03/Hack-A-Thing/raw/main/robotic_arm.png" style="width:100%;border-radius:6px;margin:0 0 20px 0;" alt="Robotic arm hardware setup" />
+<p>Hackathon build of a multi-input robotic arm running on the Nordic nRF7002-DK. The board reads joystick analog inputs via on-chip ADC at 10 Hz, cycles through six servo motors with a button press, accepts keypad commands for gripper open/close and home position, and uses an IR sensor as a basic proximity / collision-avoidance layer.</p>
+<p>A complete embedded systems pipeline under a hackathon time-budget: hardware bring-up, sensor integration, real-time control loop, and an automated demo sequence on real hardware.</p>
+<p style="color:var(--ink-dim);font-size:13px;margin-top:14px;">IoT Hackathon, Spring 2026 · 4-person team</p>
+<p style="margin-top:14px;"><a href="https://github.com/umarmakki03/Hack-A-Thing" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none;border-bottom:1px solid var(--red);">View repo ↗</a></p>` }
+];
+
+const CARD_DATA = [
+  { id: 'about',     num: '01', tag: 'ABOUT',          title: 'Robots that have', subtitle: 'to figure it out.', snippet: 'Robotics. Esports. Aviation. Drawn to systems where pressure is a privilege.', position: [-2.0, 1.9, -0.4] },
+  { id: 'projects',  num: '02', tag: 'PROJECTS',       title: 'Built to', subtitle: 'run.', snippet: 'Six graduate projects - autonomous drone SLAM, pose-guided trajectory prediction, manipulation + imitation learning, curiosity-driven RL, kinematics, and embedded control.', position: [2.0, 1.9, -0.4] },
+  { id: 'experience',num: '03', tag: 'EXPERIENCE',     title: 'The road', subtitle: 'so far.', snippet: 'Graduate research at Northeastern - six projects, two papers, one ongoing extension. Open to opportunities.', position: [-2.2, 0.0, -0.4] },
+  { id: 'now',       num: '04', tag: 'NOW',            title: 'Currently', subtitle: 'building.', snippet: 'PGTP-Net 2D → 3D extension · GPS-denied drone navigation on the Qualcomm Dragonwing IQ-9075 EVK.', position: [2.2, 0.0, -0.4] }
+];
+
+/* ============================================================
+   MODALS (unchanged from baseline)
+   ============================================================ */
+const MODAL_BG = document.getElementById('modal-bg');
+const MODAL_TITLE = document.getElementById('modal-title');
+const MODAL_TAG = document.getElementById('modal-tag');
+const MODAL_CONTENT = document.getElementById('modal-content');
+
+function openSection(name) {
+  if (audio.enabled) audio.chime();
+  if (name === 'about') {
+    MODAL_TAG.textContent = '01 - ABOUT';
+    MODAL_TITLE.innerHTML = 'Robots that have to<br><em>figure it out themselves.</em>';
+    MODAL_CONTENT.innerHTML = `
+      <div class="modal-body">
+        <p>People usually think of robots as machines built for efficiency - tools that automate tasks and make life easier. But to me, robotics is more than convenience. A robot that helps one person with small daily tasks could help another <strong>regain independence and control over their life</strong>. The technology may be the same, but the impact isn't. That's the space I want to work in: building robots that are practical for everyday use while also becoming <strong>essential support systems for the people who rely on them most</strong>.</p>
+        <p>Esports taught me what real pressure looks like. I competed at that level for years. Now I coach players through it. The dedication, critical thinking, and split-second decisions it demands - where every choice matters and hesitation gets punished instantly - teach you how to <strong>think clearly, adapt fast, and trust your preparation</strong>. That kind of pressure changes the way you approach everything else. For me, <strong>pressure has been a privilege</strong>. It's the gear where I find solutions and tactics no one else saw. I'll make mistakes like anyone does, but <strong>making the same one twice isn't in my books</strong>.</p>
+        <p>What I try to bring to a team is <strong>persistence around difficult problems</strong> and a focus on <strong>building things that actually work</strong>. I'm less interested in surface-level answers and more interested in understanding the systems underneath them - which usually means taking the time to ask the right questions before jumping to conclusions.</p>
+        <p>I learn fastest in collaboration with people who care deeply about their craft, who challenge each other honestly, and who teach without being asked. The environments I thrive in are built on <strong>trust, resilience, and a team that cares more about building the right solution</strong>.</p>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item"><div class="meta-label">Based</div><div class="meta-value">Boston, MA · open to relocate</div></div>
+        <div class="meta-item"><div class="meta-label">GPA</div><div class="meta-value">3.96 / 4.00</div></div>
+        <div class="meta-item"><div class="meta-label">Status</div><div class="meta-value">Open to opportunities</div></div>
+      </div>
+      <div class="edu-list">
+        <div class="edu-row"><div class="edu-year">2025 - 2027</div><div class="edu-main"><h3>M.S. in Robotics</h3><p>Northeastern University · GPA 3.96 · Coursework: Robot Sensing &amp; Navigation, Mobile Robotics, Robot Mechanics &amp; Control, Reinforcement Learning</p></div><div class="edu-loc">Boston, MA</div></div>
+        <div class="edu-row"><div class="edu-year">2021 - 2025</div><div class="edu-main"><h3>B.Tech in Artificial Intelligence &amp; Data Science</h3><p>KL University · Coursework: Machine Learning, Deep Learning, Computer Vision, Image Processing, Signal Processing, NLP, High-Performance Computing</p></div><div class="edu-loc">India</div></div>
+      </div>`;
+  } else if (name === 'projects') {
+    MODAL_TAG.textContent = '02 - PROJECTS';
+    MODAL_TITLE.innerHTML = 'Built to <em>run.</em>';
+    MODAL_CONTENT.innerHTML = `
+      <div class="proj-list" id="proj-list">
+        ${PROJECTS.map((p, i) => `
+          <div class="proj-item" data-proj="${i}">
+            <div class="proj-tag">${String(i+1).padStart(2,'0')} · ${p.tag}</div>
+            <h3>${p.title}</h3>
+            <p>${p.desc}</p>
+            ${p.stack.map(s => `<span class="chip">${s}</span>`).join('')}
+          </div>`).join('')}
+      </div>
+      <div class="proj-detail" id="proj-detail"></div>`;
+    document.querySelectorAll('#proj-list .proj-item').forEach(el => {
+      el.addEventListener('click', () => showProjectDetail(parseInt(el.dataset.proj)));
+    });
+  } else if (name === 'experience') {
+    MODAL_TAG.textContent = '03 - EXPERIENCE';
+    MODAL_TITLE.innerHTML = 'The road <em>so far.</em>';
+    MODAL_CONTENT.innerHTML = `
+      <div class="edu-list">
+        <div class="edu-row"><div class="edu-year">2026</div><div class="edu-main"><h3>Competition - AI for Industry Challenge 2026 (Intrinsic)</h3><p>Team ATOMIC · Qualification Phase. Autonomous fiber-optic cable insertion (SFP &amp; SC connectors) on a UR5e under sub-mm tolerances. Hybrid pipeline: LeRobot ACT imitation learning + YOLOv8-OBB multi-view perception + closed-loop visual servoing. <a href="https://github.com/umarmakki03/multiview-act-ur5-servoing" target="_blank" rel="noopener" style="color:var(--red);">repo ↗</a></p></div><div class="edu-loc">Intrinsic / Alphabet</div></div>
+        <div class="edu-row"><div class="edu-year">Summer 2026 →</div><div class="edu-main"><h3>Research - 3D Pose-and-Trajectory Extension (PGTP-Net v2)</h3><p>Lifting both pose representation (SMPL pose + shape via HMR2.0 / WHAM) and trajectory output to full 3D world coordinates. Investigating whether kinematic features (body yaw, shoulder-pelvis decoupling, COM lean) generalize better than raw joint coordinates under noisy estimated poses, and whether offline ADE/FDE gains translate to closed-loop safety gains in robot navigation. Literature review completed; experimental design in progress.</p></div><div class="edu-loc">Northeastern</div></div>
+        <div class="edu-row"><div class="edu-year">Spring 2026</div><div class="edu-main"><h3>GPS-Denied Drone Navigation</h3><p>GPS-denied drone autonomy in a simulated DARPA SubT cave. LIO-SAM LiDAR-inertial SLAM, OctoMap occupancy mapping, frontier-based exploration, Nav2 path planning, and georeferenced mineral detection. Full IEEE-format paper. <a href="https://github.com/umarmakki03/GPS-Denied-Drone-Navigation-for-3D-Mapping-and-Mineral-Detection" target="_blank" rel="noopener" style="color:var(--red);">repo ↗</a></p></div><div class="edu-loc">Northeastern</div></div>
+        <div class="edu-row"><div class="edu-year">Spring 2026</div><div class="edu-main"><h3>Sparse-Reward RL - Atari Adventure</h3><p>Three curiosity-augmented deep-RL tracks on Atari Adventure across 120M+ steps. My track: PPO + Random Network Distillation with curriculum learning. Written up in AAAI conference format. <a href="https://github.com/umarmakki03/Curiosity-driven-exploration-atari-adventure" target="_blank" rel="noopener" style="color:var(--red);">repo ↗</a></p></div><div class="edu-loc">Northeastern</div></div>
+        <div class="edu-row"><div class="edu-year">Fall 2025</div><div class="edu-main"><h3>PGTP-Net - Trajectory Prediction</h3><p>Real-time pose-guided pedestrian trajectory prediction using Social-LSTM + Transformer + CVAE. 35–46% ADE/FDE reduction on JTA, 25–28% on ETH/UCY. <a href="https://github.com/umarmakki03/Pose-Guided-Trajectory-Prediction-Network-PGTP-Net" target="_blank" rel="noopener" style="color:var(--red);">repo ↗</a></p></div><div class="edu-loc">Northeastern</div></div>
+        <div class="edu-row"><div class="edu-year">Fall 2025</div><div class="edu-main"><h3>UR3 Forward &amp; Inverse Kinematics</h3><p>Forward kinematics and damped least-squares inverse kinematics for the UR3 6-DOF manipulator. Hexagonal, elliptical, and lemniscate task-space trajectory tracking; Monte Carlo workspace visualization.</p></div><div class="edu-loc">Northeastern</div></div>
+        <div class="edu-row"><div class="edu-year">Spring 2026</div><div class="edu-main"><h3>IoT Hackathon - Multi-Input Robotic Arm</h3><p>Hackathon build on a Nordic nRF7002-DK: joystick + keypad + IR sensor controlling a 6-servo robotic arm. End-to-end embedded pipeline from sensor bring-up to a scripted demo sequence. <a href="https://github.com/umarmakki03/Hack-A-Thing" target="_blank" rel="noopener" style="color:var(--red);">repo ↗</a></p></div><div class="edu-loc">Northeastern</div></div>
+      </div>
+      <p style="color:var(--ink-dim);font-size:13px;margin-top:24px;font-family:'JetBrains Mono',monospace;">&gt; Open for opportunities. Reach out via the contact bar below.</p>`;
+  } else if (name === 'now') {
+    MODAL_TAG.textContent = '04 - NOW';
+    MODAL_TITLE.innerHTML = 'What I&rsquo;m actually<br><em>working on right now.</em>';
+    MODAL_CONTENT.innerHTML = `
+      <div class="modal-body">
+        <p style="color:var(--ink-dim);font-size:13px;font-family:'JetBrains Mono',monospace;margin-bottom:24px;">&gt; LAST UPDATED 29 MAY 2026</p>
+      </div>
+      <div class="now-list">
+        <div class="now-row">
+          <div class="now-tag">RESEARCHING</div>
+          <div class="now-main">
+            <h4>PGTP-Net 2D &rarr; 3D extension</h4>
+            <p>Lifting both the pose representation and the trajectory output from 2D image space to full 3D world coordinates. Investigating whether kinematic features (body yaw, shoulder-pelvis decoupling, COM lean) generalize better than raw joint coordinates under noisy estimated poses, and whether offline ADE/FDE gains translate to closed-loop safety gains in navigation.</p>
+            <div class="now-status">Ongoing</div>
+          </div>
+        </div>
+        <div class="now-row">
+          <div class="now-tag">BUILDING</div>
+          <div class="now-main">
+            <h4>GPS-Denied Drone Navigation on Qualcomm Dragonwing</h4>
+            <p>Porting the GPS-denied drone autonomy stack - LiDAR-inertial SLAM, OctoMap, and frontier-based exploration - from Gazebo simulation onto the <strong>Qualcomm Dragonwing&trade; IQ-9075 EVK</strong>. Taking the pipeline from sim toward real embedded, on-board deployment.</p>
+            <div class="now-status">Early stage</div>
+          </div>
+        </div>
+      </div>`;
+  }
+  MODAL_BG.classList.add('open');
+}
+
+function showProjectDetail(i) {
+  const p = PROJECTS[i];
+  const list = document.getElementById('proj-list');
+  const detail = document.getElementById('proj-detail');
+  list.style.display = 'none';
+  detail.classList.add('open');
+  detail.innerHTML = `
+    <div class="proj-tag" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);letter-spacing:.22em;text-transform:uppercase;margin-bottom:10px;">${p.tag}</div>
+    <h3 style="font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:500;letter-spacing:-.02em;color:var(--bone);margin-bottom:20px;line-height:1.05;">${p.title}</h3>
+    <div style="color:var(--bone);font-size:15px;line-height:1.7;">${p.body}</div>
+    <div style="margin-top:20px;">${p.stack.map(s => `<span class="chip">${s}</span>`).join('')}</div>`;
+}
+
+function closeModal() {
+  // If a project detail is open, step back to the project list instead of closing.
+  const detail = document.getElementById('proj-detail');
+  if (detail && detail.classList.contains('open')) {
+    detail.classList.remove('open');
+    detail.innerHTML = '';
+    const list = document.getElementById('proj-list');
+    if (list) list.style.display = '';
+    return;
+  }
+  MODAL_BG.classList.remove('open');
+}
+document.getElementById('modal-close').addEventListener('click', closeModal);
+MODAL_BG.addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ============================================================
+   AUDIO ENGINE - with new clunk/release/chime/zap
+   ============================================================ */
+const audio = {
+  enabled: false, ctx: null, master: null, servoOsc: null, servoGain: null, noiseGain: null,
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0;
+    this.master.connect(this.ctx.destination);
+    this.servoOsc = this.ctx.createOscillator();
+    this.servoOsc.type = 'sawtooth';
+    this.servoOsc.frequency.value = 80;
+    this.servoGain = this.ctx.createGain();
+    this.servoGain.gain.value = 0;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 800; lp.Q.value = 4;
+    this.servoOsc.connect(this.servoGain).connect(lp).connect(this.master);
+    this.servoOsc.start();
+    const bufSize = 2 * this.ctx.sampleRate;
+    const nb = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const d = nb.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+    const ns = this.ctx.createBufferSource();
+    ns.buffer = nb; ns.loop = true;
+    const nf = this.ctx.createBiquadFilter();
+    nf.type = 'bandpass'; nf.frequency.value = 1200; nf.Q.value = 2;
+    this.noiseGain = this.ctx.createGain();
+    this.noiseGain.gain.value = 0;
+    ns.connect(nf).connect(this.noiseGain).connect(this.master);
+    ns.start();
+  },
+  enable() {
+    this.init();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    this.enabled = true;
+    this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.master.gain.linearRampToValueAtTime(0.6, this.ctx.currentTime + 0.3);
+  },
+  disable() {
+    if (!this.ctx) return;
+    this.enabled = false;
+    this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
+  },
+  updateMotion(velocity) {
+    if (!this.enabled || !this.ctx) return;
+    const v = Math.min(1, velocity * 1.5);
+    const t = this.ctx.currentTime;
+    this.servoGain.gain.setTargetAtTime(v * 0.06, t, 0.05);
+    this.noiseGain.gain.setTargetAtTime(v * 0.025, t, 0.05);
+    this.servoOsc.frequency.setTargetAtTime(60 + v * 220, t, 0.08);
+  },
+  click() {
+    if (!this.enabled || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'square'; o.frequency.value = 800;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.07, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.09);
+  },
+  clunk() {
+    // Low percussive thud - grab sound
+    if (!this.enabled || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    // Sub thump
+    const o1 = this.ctx.createOscillator();
+    o1.type = 'sine'; o1.frequency.value = 90;
+    const g1 = this.ctx.createGain();
+    g1.gain.setValueAtTime(0, t);
+    g1.gain.linearRampToValueAtTime(0.18, t + 0.005);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    o1.frequency.exponentialRampToValueAtTime(50, t + 0.15);
+    o1.connect(g1).connect(this.master);
+    o1.start(t); o1.stop(t + 0.18);
+    // Noise burst
+    const bufSize = 0.05 * this.ctx.sampleRate;
+    const nb = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/bufSize, 2);
+    const ns = this.ctx.createBufferSource();
+    ns.buffer = nb;
+    const nf = this.ctx.createBiquadFilter();
+    nf.type = 'lowpass'; nf.frequency.value = 600;
+    const ng = this.ctx.createGain(); ng.gain.value = 0.12;
+    ns.connect(nf).connect(ng).connect(this.master);
+    ns.start(t);
+  },
+  release() {
+    // Short pneumatic-ish release click
+    if (!this.enabled || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth'; o.frequency.value = 220;
+    o.frequency.exponentialRampToValueAtTime(120, t + 0.08);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.06, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = 600; f.Q.value = 3;
+    o.connect(f).connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.12);
+  },
+  chime() {
+    // Two-note bell - section open
+    if (!this.enabled || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine'; o.frequency.value = freq;
+      const g = this.ctx.createGain();
+      const start = t + i * 0.08;
+      g.gain.setValueAtTime(0, start);
+      g.gain.linearRampToValueAtTime(0.08, start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, start + 0.6);
+      o.connect(g).connect(this.master);
+      o.start(start); o.stop(start + 0.65);
+    });
+  },
+  zap() {
+    // For disco mode tip flashes
+    if (!this.enabled || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'square'; o.frequency.value = 1800;
+    o.frequency.exponentialRampToValueAtTime(400, t + 0.05);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.04, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.07);
+  }
+};
+document.getElementById('audio-toggle').addEventListener('click', function() {
+  if (audio.enabled) { audio.disable(); this.classList.remove('on'); }
+  else { audio.enable(); this.classList.add('on'); audio.click(); }
+});
+
+/* ============================================================
+   THREE SCENE & GLOBALS
+   ============================================================ */
+let scene, camera, renderer, clock, composer, bloomPass, fxaaPass;
+let mouse = { ndc: new THREE.Vector2(), x: window.innerWidth/2, y: window.innerHeight/2, target3D: new THREE.Vector3(0, 1, 1) };
+let arm = { joints: [], grabbable: [], fingers: [], baseFingerX: 0.07, gripperOpenness: 1.0, gripperTarget: 1.0 };
+let particles, gridFloor;
+let platformGrp = null;
+let cards3D = [];
+let props = [];
+let targetZone;
+let drag = { active: false, joint: -1, targetWorld: new THREE.Vector3(), plane: new THREE.Plane() };
+let heldProp = null; // currently held prop (or null)
+let lastJointVelocity = 0;
+let raycaster = new THREE.Raycaster();
+let idleTime = 0;
+// Ambient camera parallax + breathing
+let camPtrX = 0, camPtrY = 0, camPtrTX = 0, camPtrTY = 0;
+window.addEventListener('mousemove', (e) => {
+  camPtrTX = (e.clientX / window.innerWidth) * 2 - 1;
+  camPtrTY = (e.clientY / window.innerHeight) * 2 - 1;
+});
+let fpsCounter = { last: performance.now(), frames: 0, fps: 60, lowFrames: 0 };
+let armReady = false;
+let armState = 'tracking'; // 'tracking' | 'dragging' | 'holding' | 'demo' | 'easter'
+let hoveredCard = null;
+let easterWaveActive = false;
+let disco = { active: false, lastFlash: 0 };
+const TIP_PLANE_Z = 0.6;
+const MAX_REACH = 2.5;
+
+/* ============================================================
+   DEMO SEQUENCE - pick up cube, place in target, wave
+   ============================================================ */
+const DEMO_SEQUENCE = [
+  { label: 'INITIALIZING DEMO',   duration: 700,  kind: 'wait' },
+  { label: 'APPROACHING OBJECT',  duration: 1800, kind: 'move', target: [-1.5,  0.0, 1.3], gripper: 1.0 },
+  { label: 'DESCENDING',          duration: 700,  kind: 'move', target: [-1.5, -0.38, 1.3], gripper: 1.0 },
+  { label: 'GRIPPER CLOSE · PICK',duration: 500,  kind: 'grip', target: [-1.5, -0.38, 1.3], gripper: 0.0, pickProp: 0 },
+  { label: 'LIFTING',             duration: 1000, kind: 'move', target: [-1.5,  0.5, 1.3], gripper: 0.0 },
+  { label: 'TRAVERSE TO TARGET',  duration: 1800, kind: 'move', target: [ 1.4,  0.5, 0.6], gripper: 0.0 },
+  { label: 'DESCENDING TO PLACE', duration: 800,  kind: 'move', target: [ 1.4, -0.70, 0.6], gripper: 0.0 },
+  { label: 'GRIPPER OPEN · PLACE',duration: 500,  kind: 'grip', target: [ 1.4, -0.70, 0.6], gripper: 1.0, dropProp: true },
+  { label: 'RETRACTING',          duration: 1000, kind: 'move', target: [ 1.4,  0.5, 0.6], gripper: 1.0 },
+  { label: 'RETURN HOME',         duration: 1500, kind: 'move', target: [ 0,    0.0, 1.0], gripper: 1.0 },
+  { label: 'GREETING',            duration: 1800, kind: 'wave', gripper: 1.0 },
+  { label: 'CYCLE COMPLETE',      duration: 600,  kind: 'wait' }
+];
+let demo = { active: false, step: 0, stepStart: 0, currentIK: new THREE.Vector3(0, 1.0, 1.0), waveT0: 0 };
+
+/* ============================================================
+   INIT THREE
+   ============================================================ */
+function initThree() {
+  if (isCoarse) return;
+  const container = document.getElementById('scene');
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0A0A0B, 0.012);
+
+  const w = window.innerWidth, h = window.innerHeight;
+  camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
+  camera.position.set(0, 1.5, 5.6);
+  camera.lookAt(0, 0.6, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setSize(w, h);
+  renderer.setClearColor(0x0A0A0B, 1);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
+  container.appendChild(renderer.domElement);
+
+  // ============ POST-PROCESSING: BLOOM ============
+  composer = new THREE.EffectComposer(renderer);
+  composer.setSize(w, h);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(w, h),
+    0.75,   // strength - moderate glow, no melt
+    0.45,   // radius
+    0.78    // threshold - only the genuinely bright stuff blooms (visor, LEDs, spotlight cones)
+  );
+  composer.addPass(bloomPass);
+
+  // FXAA antialiasing - bloom destroys the renderer's MSAA, so we re-add edge smoothing here
+  fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+  const pr = renderer.getPixelRatio();
+  fxaaPass.material.uniforms.resolution.value.x = 1 / (w * pr);
+  fxaaPass.material.uniforms.resolution.value.y = 1 / (h * pr);
+  composer.addPass(fxaaPass);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x2a2a32, 1.2));
+  const key = new THREE.DirectionalLight(0xfff4e0, 0.9);
+  key.position.set(4, 6, 3); scene.add(key);
+  const rim = new THREE.PointLight(0xff2d2d, 1.2, 14);
+  rim.position.set(-3, 2.5, -2); scene.add(rim);
+  arm.rimLight = rim;
+  const fill = new THREE.PointLight(0xffe8c8, 0.55, 14);
+  fill.position.set(3, 1.5, 2); scene.add(fill);
+
+  // Dedicated lighting for the samurai robot at z=-4.8 (back of the scene)
+  const robotKey = new THREE.PointLight(0xfff4e0, 0.7, 14);
+  robotKey.position.set(3, 5, -2); scene.add(robotKey);
+  const robotRim = new THREE.PointLight(0xff4d4d, 1.0, 10);
+  robotRim.position.set(-3, 4, -7); scene.add(robotRim);
+  const robotFill = new THREE.PointLight(0xb8c4d6, 0.35, 12);
+  robotFill.position.set(-3, 4, -2); scene.add(robotFill);
+  const robotTopKick = new THREE.PointLight(0xffe2a8, 0.3, 8);
+  robotTopKick.position.set(0, 7, -4.5); scene.add(robotTopKick);
+
+  // ============ THEATRICAL SPOTLIGHTS ============
+  // Gradient beam material: bright at apex (light source), fades to transparent at base
+  const makeBeamMat = (color, op) => new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: op } },
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv;
+      void main() {
+        // v=1 at apex (top), v=0 at base - fade strongly toward base
+        float fade = pow(vUv.y, 2.5);
+        // Also fade horizontally near the seam (u=0 and u=1) for softer edges
+        float edge = sin(vUv.x * 3.14159);
+        gl_FragColor = vec4(uColor, fade * edge * uOpacity);
+      }
+    `,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+
+  // Floor pool material: radial gradient, bright center fading to edge
+  const makePoolMat = (color, op) => new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: op } },
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv;
+      void main() {
+        float d = distance(vUv, vec2(0.5));
+        float fade = smoothstep(0.5, 0.0, d);
+        fade = pow(fade, 1.8);
+        gl_FragColor = vec4(uColor, fade * uOpacity);
+      }
+    `,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+
+  // Robot spotlight - cool bone-color theatrical down-light
+  const robotSpot = new THREE.SpotLight(0xfff4e0, 3.5, 16, Math.PI / 12, 0.4, 1.6);
+  robotSpot.position.set(0, 6.5, -4.0);
+  robotSpot.target.position.set(0, 0.3, -4.8);
+  scene.add(robotSpot);
+  scene.add(robotSpot.target);
+  // Gradient beam - narrower, fades from top
+  const robotBeam = new THREE.Mesh(new THREE.ConeGeometry(0.9, 6.25, 32, 1, true), makeBeamMat(0xfff4e0, 0.35));
+  robotBeam.position.set(0, 3.4, -4.4);
+  robotBeam.rotation.x = 0.128;
+  scene.add(robotBeam);
+  // Floor pool under robot
+  const robotPool = new THREE.Mesh(new THREE.CircleGeometry(1.8, 48), makePoolMat(0xfff4e0, 0.7));
+  robotPool.position.set(0, -0.72, -4.8);
+  robotPool.rotation.x = -Math.PI / 2;
+  scene.add(robotPool);
+
+  // Storage rack spotlight - warm amber accent
+  const rackSpot = new THREE.SpotLight(0xffb070, 7.0, 12, Math.PI / 10, 0.35, 1.6);
+  rackSpot.position.set(4.5, 4.5, -2.0);
+  rackSpot.target.position.set(4.5, 0.2, -3.5);
+  scene.add(rackSpot);
+  scene.add(rackSpot.target);
+  const rackBeam = new THREE.Mesh(new THREE.ConeGeometry(0.85, 4.55, 32, 1, true), makeBeamMat(0xffb070, 0.4));
+  rackBeam.position.set(4.5, 2.35, -2.75);
+  rackBeam.rotation.x = 0.336;
+  scene.add(rackBeam);
+  const rackPool = new THREE.Mesh(new THREE.CircleGeometry(1.3, 48), makePoolMat(0xffb070, 0.6));
+  rackPool.position.set(4.5, -0.72, -3.5);
+  rackPool.rotation.x = -Math.PI / 2;
+  scene.add(rackPool);
+
+  buildGridFloor();
+  buildParticles();
+  buildBackgroundScene();
+  buildArm();
+  buildSentinelMech();
+  buildTransformParticles();
+  buildPlatform();
+  buildCards3D();
+  buildProps();
+  buildTargetZone();
+  initScanOverlay();
+
+  // System ready immediately - no boot sequence, no popup hint
+  armReady = true;
+
+  window.addEventListener('resize', onResize);
+  window.addEventListener('pointermove', onPointerMove);
+  document.getElementById('scene').addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('keydown', onKeyDown);
+  document.getElementById('demo-btn').addEventListener('click', toggleDemo);
+  document.getElementById('transform-btn').addEventListener('click', triggerTransform);
+
+  clock = new THREE.Clock();
+  animate();
+}
+
+/* ============================================================
+   GRID FLOOR & PARTICLES
+   ============================================================ */
+function buildGridFloor() {
+  const gridGeo = new THREE.PlaneGeometry(40, 40);
+  const gridMat = new THREE.ShaderMaterial({
+    transparent: true,
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0xff2d2d) } },
+    vertexShader: `varying vec3 vWorld; void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorld = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `varying vec3 vWorld; uniform vec3 uColor;
+      void main() {
+        vec2 grid = abs(fract(vWorld.xz * 0.5 - 0.5) - 0.5) / fwidth(vWorld.xz * 0.5);
+        float line = min(grid.x, grid.y);
+        float g = 1.0 - min(line, 1.0);
+        float dist = length(vWorld.xz);
+        float fade = smoothstep(15.0, 3.0, dist);
+        gl_FragColor = vec4(uColor, g * fade * 0.32);
+      }`
+  });
+  gridFloor = new THREE.Mesh(gridGeo, gridMat);
+  gridFloor.rotation.x = -Math.PI / 2;
+  gridFloor.position.y = -1.0;
+  scene.add(gridFloor);
+}
+
+function buildParticles() {
+  const pGeo = new THREE.BufferGeometry();
+  const pCount = 90;
+  const pos = new Float32Array(pCount * 3);
+  const pSpeed = new Float32Array(pCount);
+  for (let i = 0; i < pCount; i++) {
+    pos[i*3] = (Math.random() - 0.5) * 12;
+    pos[i*3+1] = Math.random() * 6 - 1;
+    pos[i*3+2] = (Math.random() - 0.5) * 6 - 1;
+    pSpeed[i] = 0.04 + Math.random() * 0.12;
+  }
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  pGeo.setAttribute('speed', new THREE.BufferAttribute(pSpeed, 1));
+  const pMat = new THREE.PointsMaterial({
+    color: 0xF5E6D3, size: 0.022, transparent: true, opacity: 0.4,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  particles = new THREE.Points(pGeo, pMat);
+  scene.add(particles);
+}
+
+/* ============================================================
+   BACKGROUND SCENE - workbench silhouettes, distant equipment
+   ============================================================ */
+function buildBackgroundScene() {
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x0e0e10, metalness: 0.3, roughness: 0.9 });
+  const darkerMat = new THREE.MeshStandardMaterial({ color: 0x070708, metalness: 0.2, roughness: 0.95 });
+
+  // (Workbench replaced by centered Gaming Station - see buildGamingStation)
+
+  // Storage rack (right side, far back)
+  const rack = new THREE.Group();
+  rack.position.set(4.5, -1, -3.5);
+  // Vertical frames
+  for (let lx of [-0.6, 0.6]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.4, 0.08), darkerMat);
+    post.position.set(lx, 1.2, 0); rack.add(post);
+  }
+  // Shelves
+  for (let y of [0.5, 1.2, 1.9]) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.6), darkMat);
+    shelf.position.set(0, y, 0); rack.add(shelf);
+    // Some boxes on shelves
+    for (let i = 0; i < 2; i++) {
+      const sBox = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22 + Math.random()*0.1, 0.18, 0.22 + Math.random()*0.1),
+        darkerMat
+      );
+      sBox.position.set(-0.4 + i * 0.6, y + 0.12, 0); rack.add(sBox);
+    }
+  }
+  scene.add(rack);
+
+  // (Cables removed - humanoid hologram occupies the back-center now)
+
+  // Distant red accent lights (small glowing dots in the fog - kept as faint atmosphere)
+  for (let i = 0; i < 3; i++) {
+    const dot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.5 })
+    );
+    dot.position.set(-5 + i * 5, 1 + Math.random() * 2, -5);
+    scene.add(dot);
+  }
+
+  // ============ INDUSTRIAL BACK WALL ============
+  // Anchors the depth, gives the robot something to stand against
+  const wall = new THREE.Group();
+  wall.position.set(0, 0.5, -12);
+
+  // Main wall surface - dark, slightly metallic
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x14141a, metalness: 0.4, roughness: 0.85 });
+  wall.add(new THREE.Mesh(new THREE.PlaneGeometry(34, 11), wallMat));
+
+  // (Panel seam lines removed - too thin, aliased badly under bloom)
+
+  // (Hazard stripe removed - diagonal slash pattern was reading as visual noise rather than detail)
+
+  // Industrial vents - recessed grills on the wall
+  function makeVent(x, y) {
+    const v = new THREE.Group();
+    const frame = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.6, 1.0),
+      new THREE.MeshStandardMaterial({ color: 0x06060a, metalness: 0.5, roughness: 0.7 })
+    );
+    v.add(frame);
+    for (let i = -4; i <= 4; i++) {
+      const slat = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.04), new THREE.MeshBasicMaterial({ color: 0x2a2a34 }));
+      slat.position.set(0, i * 0.11, 0.01);
+      v.add(slat);
+    }
+    v.position.set(x, y, 0.025);
+    wall.add(v);
+  }
+  makeVent(-9, 2.2);
+  makeVent(9, 2.2);
+
+  // Warning placard (small bone-color rectangle that reads as a label)
+  const placard = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.2, 0.35),
+    new THREE.MeshBasicMaterial({ color: 0xF5E6D3 })
+  );
+  placard.position.set(-7, -0.4, 0.025);
+  wall.add(placard);
+  const placardText = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.8, 0.08),
+    new THREE.MeshBasicMaterial({ color: 0x0a0a0c })
+  );
+  placardText.position.set(-7, -0.4, 0.03);
+  wall.add(placardText);
+
+  // Status LED cluster - small bright pixels scattered, reads as instrumentation
+  const ledPositions = [
+    { x: 4, y: -0.5, c: 0xFF2D2D },
+    { x: 4.3, y: -0.5, c: 0xFF2D2D },
+    { x: 4.6, y: -0.5, c: 0xFFB070 },
+    { x: 4.9, y: -0.5, c: 0x88FF99 },
+    { x: -3.5, y: 0.8, c: 0xFFB070 },
+    { x: -3.5, y: 1.0, c: 0x88FF99 },
+    { x: 10, y: -0.3, c: 0xFF2D2D },
+    { x: 10.3, y: -0.3, c: 0x88FF99 },
+  ];
+  ledPositions.forEach(p => {
+    const led = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 10, 10),
+      new THREE.MeshBasicMaterial({ color: p.c })
+    );
+    led.position.set(p.x, p.y, 0.045);
+    wall.add(led);
+  });
+
+  // Vertical pipe runs - silhouettes against the wall, adds verticality
+  const pipeMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.5, roughness: 0.6 });
+  for (const x of [-12.5, 13]) {
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 11, 12), pipeMat);
+    pipe.position.set(x, 0, 0.1);
+    wall.add(pipe);
+  }
+
+  scene.add(wall);
+}
+
+/* ============================================================
+   GAMING STATION - esports setup centered behind the arm
+   Desk + monitor (live HUD canvas) + RGB strip + chair + seated
+   silhouette wearing a headset.
+   ============================================================ */
+let gamingMonitor = null;  // global ref so we can animate the canvas
+
+function buildGamingStation() {
+  const grp = new THREE.Group();
+  grp.position.set(0, -1.0, -3.6);  // centered, far back behind the arm
+
+  const deskMat = new THREE.MeshStandardMaterial({ color: 0x111114, metalness: 0.4, roughness: 0.7 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x050507, metalness: 0.2, roughness: 0.95 });
+  const chairMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.25, roughness: 0.9 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, metalness: 0.15, roughness: 0.95 });
+
+  // ---- Desk ----
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.0), deskMat);
+  desk.position.set(0, 0.78, 0);
+  grp.add(desk);
+  // desk legs
+  for (let lx of [-1, 1]) for (let lz of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.78, 0.05), blackMat);
+    leg.position.set(lx * 1.1, 0.39, lz * 0.45);
+    grp.add(leg);
+  }
+  // thin red accent stripe along desk front (signature line)
+  const deskStripe = new THREE.Mesh(
+    new THREE.BoxGeometry(2.4, 0.003, 0.008),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.5 })
+  );
+  deskStripe.position.set(0, 0.808, 0.5);
+  grp.add(deskStripe);
+
+  // ---- Monitor (the centerpiece - animated canvas screen) ----
+  const monStand = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.22), blackMat);
+  monStand.position.set(0, 0.825, -0.25);
+  grp.add(monStand);
+  const monArm = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.45, 8), blackMat);
+  monArm.position.set(0, 1.07, -0.25);
+  grp.add(monArm);
+  // bezel
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.95, 0.05), blackMat);
+  bezel.position.set(0, 1.45, -0.25);
+  grp.add(bezel);
+  // screen with game HUD canvas
+  const gameCanvas = document.createElement('canvas');
+  gameCanvas.width = 1024; gameCanvas.height = 600;
+  const gameCtx = gameCanvas.getContext('2d');
+  drawGameMonitor(gameCtx, gameCanvas.width, gameCanvas.height, 0);
+  const gameTex = new THREE.CanvasTexture(gameCanvas);
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.45, 0.85),
+    new THREE.MeshBasicMaterial({ map: gameTex })
+  );
+  screen.position.set(0, 1.45, -0.222);
+  grp.add(screen);
+  gamingMonitor = { canvas: gameCanvas, ctx: gameCtx, texture: gameTex, frame: 0 };
+
+  // RGB underglow behind the monitor (cyan-magenta wash on the back wall)
+  const rgbGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.6, 0.6),
+    new THREE.MeshBasicMaterial({ color: 0x4400ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending })
+  );
+  rgbGlow.position.set(0, 1.0, -0.4);
+  grp.add(rgbGlow);
+  const rgbGlow2 = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.2, 0.35),
+    new THREE.MeshBasicMaterial({ color: 0x00ddff, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending })
+  );
+  rgbGlow2.position.set(0, 1.6, -0.4);
+  grp.add(rgbGlow2);
+
+  // Faint colored point light from the monitor (paints the chair/figure)
+  const monLight = new THREE.PointLight(0x6699ff, 0.6, 3.5);
+  monLight.position.set(0, 1.45, 0.3);
+  grp.add(monLight);
+
+  // ---- Keyboard with purple RGB underglow ----
+  const kbd = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.025, 0.18), blackMat);
+  kbd.position.set(-0.05, 0.815, 0.1);
+  grp.add(kbd);
+  const kbdGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.7, 0.26),
+    new THREE.MeshBasicMaterial({ color: 0xaa00ff, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending })
+  );
+  kbdGlow.rotation.x = -Math.PI / 2;
+  kbdGlow.position.set(-0.05, 0.806, 0.1);
+  grp.add(kbdGlow);
+
+  // Mouse + mousepad
+  const pad = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.32, 0.22),
+    new THREE.MeshBasicMaterial({ color: 0x050507 })
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.set(0.45, 0.806, 0.12);
+  grp.add(pad);
+  const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.022, 0.09), blackMat);
+  mouse.position.set(0.45, 0.819, 0.12);
+  grp.add(mouse);
+
+  // ---- Gaming Chair ----
+  // base (5-star)
+  const chairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.05, 5), chairMat);
+  chairBase.position.set(0, 0.025, 0.95);
+  grp.add(chairBase);
+  // gas piston
+  const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.32, 8), blackMat);
+  piston.position.set(0, 0.21, 0.95);
+  grp.add(piston);
+  // seat cushion
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.5), chairMat);
+  seat.position.set(0, 0.41, 0.95);
+  grp.add(seat);
+  // backrest (gaming-style, tall)
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.85, 0.08), chairMat);
+  backrest.position.set(0, 0.87, 1.18);
+  grp.add(backrest);
+  // backrest red accent stripe (down the center)
+  const backStripe = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.7, 0.082),
+    new THREE.MeshStandardMaterial({ color: 0xFF2D2D, metalness: 0.3, emissive: 0xFF2D2D, emissiveIntensity: 0.15 })
+  );
+  backStripe.position.set(0, 0.87, 1.181);
+  grp.add(backStripe);
+  // headrest pillow
+  const headPillow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.16, 0.1),
+    new THREE.MeshStandardMaterial({ color: 0x1a1a1f, metalness: 0.2, roughness: 0.85 })
+  );
+  headPillow.position.set(0, 1.32, 1.15);
+  grp.add(headPillow);
+  // armrests
+  for (let ax of [-1, 1]) {
+    const armrest = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.32), chairMat);
+    armrest.position.set(ax * 0.32, 0.55, 0.95);
+    grp.add(armrest);
+    const armSupport = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.05), chairMat);
+    armSupport.position.set(ax * 0.32, 0.47, 0.95);
+    grp.add(armSupport);
+  }
+
+  // ---- Human silhouette (sitting, facing the monitor - back to camera) ----
+  // pelvis
+  const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.3), skinMat);
+  pelvis.position.set(0, 0.55, 0.95);
+  grp.add(pelvis);
+  // lower torso (slight forward lean)
+  const torsoLow = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.28, 0.26), skinMat);
+  torsoLow.position.set(0, 0.78, 1.0);
+  grp.add(torsoLow);
+  // upper torso (shoulders)
+  const torsoUp = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.26, 0.22), skinMat);
+  torsoUp.position.set(0, 1.02, 1.04);
+  grp.add(torsoUp);
+  // neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.08, 12), skinMat);
+  neck.position.set(0, 1.18, 1.04);
+  grp.add(neck);
+  // head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), skinMat);
+  head.position.set(0, 1.31, 1.04);
+  grp.add(head);
+  // arms reaching forward to the keyboard (shoulders → elbows → forearms)
+  for (let ax of [-1, 1]) {
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.26, 10), skinMat);
+    upperArm.position.set(ax * 0.21, 0.97, 0.92);
+    upperArm.rotation.x = 0.5;
+    grp.add(upperArm);
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.32, 10), skinMat);
+    forearm.position.set(ax * 0.18, 0.86, 0.65);
+    forearm.rotation.x = 1.3;
+    grp.add(forearm);
+    // hand
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.1), skinMat);
+    hand.position.set(ax * 0.15, 0.83, 0.4);
+    grp.add(hand);
+  }
+
+  // ---- Headset ----
+  // band over the top of the head
+  const hpBand = new THREE.Mesh(
+    new THREE.TorusGeometry(0.13, 0.013, 8, 20, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0x050507, metalness: 0.4, roughness: 0.6 })
+  );
+  hpBand.position.set(0, 1.42, 1.04);
+  hpBand.rotation.set(0, Math.PI / 2, 0);  // arch over top, facing forward/back
+  grp.add(hpBand);
+  // earcups with red LED glow (a gamer thing)
+  for (let ex of [-1, 1]) {
+    const cup = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.055, 0.055, 0.04, 14),
+      new THREE.MeshStandardMaterial({ color: 0x050507, metalness: 0.4, roughness: 0.7 })
+    );
+    cup.position.set(ex * 0.135, 1.29, 1.04);
+    cup.rotation.z = Math.PI / 2;
+    grp.add(cup);
+    // tiny red LED on the cup
+    const led = new THREE.Mesh(
+      new THREE.CircleGeometry(0.012, 12),
+      new THREE.MeshBasicMaterial({ color: 0xFF2D2D })
+    );
+    led.position.set(ex * 0.158, 1.29, 1.04);
+    led.rotation.y = ex * Math.PI / 2;
+    grp.add(led);
+  }
+
+  // ---- An energy-drink can on the desk (a gamer detail) ----
+  const can = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.14, 14),
+    new THREE.MeshStandardMaterial({ color: 0x222226, metalness: 0.8, roughness: 0.3 })
+  );
+  can.position.set(0.85, 0.875, -0.05);
+  grp.add(can);
+  const canLabel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.041, 0.041, 0.08, 14, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, side: THREE.DoubleSide })
+  );
+  canLabel.position.set(0.85, 0.875, -0.05);
+  grp.add(canLabel);
+
+  scene.add(grp);
+}
+
+/* Draw the game-monitor canvas - animated frame counter for liveness */
+function drawGameMonitor(ctx, W, H, frame) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background: dark game world gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#080820');
+  grad.addColorStop(0.5, '#10082a');
+  grad.addColorStop(1, '#1a0a14');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Distant terrain / horizon silhouette
+  ctx.fillStyle = '#1a1530';
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.65);
+  for (let x = 0; x <= W; x += 40) {
+    const noise = Math.sin(x * 0.013 + frame * 0.01) * 18 + Math.sin(x * 0.04) * 8;
+    ctx.lineTo(x, H * 0.65 + noise);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fill();
+
+  // Closer terrain layer
+  ctx.fillStyle = '#0c0a1f';
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.78);
+  for (let x = 0; x <= W; x += 25) {
+    ctx.lineTo(x, H * 0.78 + Math.sin(x * 0.025 + frame * 0.02) * 14);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fill();
+
+  // Enemy markers (red dots that drift)
+  for (let i = 0; i < 4; i++) {
+    const x = (W * 0.15) + i * (W * 0.18) + Math.sin(frame * 0.02 + i) * 10;
+    const y = H * 0.62 + Math.cos(frame * 0.015 + i * 1.3) * 6;
+    ctx.fillStyle = '#ff3366';
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+    // halo
+    ctx.fillStyle = 'rgba(255, 51, 102, 0.25)';
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Top-left HUD: HP bar
+  ctx.fillStyle = '#22ff88';
+  ctx.font = 'bold 22px "JetBrains Mono", monospace';
+  ctx.fillText('HP', 30, 50);
+  ctx.fillStyle = 'rgba(34, 255, 136, 0.2)';
+  ctx.fillRect(80, 32, 200, 22);
+  ctx.fillStyle = '#22ff88';
+  const hp = 70 + Math.sin(frame * 0.03) * 12;
+  ctx.fillRect(80, 32, hp * 2, 22);
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#aaaaaa';
+  ctx.fillText(`${Math.round(hp)} / 100`, 290, 50);
+
+  // Top-right: SCORE / mini-map
+  ctx.fillStyle = '#ffaa00';
+  ctx.font = 'bold 24px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(`SCORE  ${12 + ((frame / 200) | 0)} - 9`, W - 30, 50);
+  ctx.textAlign = 'left';
+
+  // Mini-map (top-right boxed)
+  ctx.strokeStyle = '#22ff88';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(W - 180, 70, 150, 150);
+  ctx.fillStyle = 'rgba(34, 255, 136, 0.05)';
+  ctx.fillRect(W - 180, 70, 150, 150);
+  // map dots
+  for (let i = 0; i < 4; i++) {
+    const mx = W - 165 + ((i * 37 + frame * 0.2) % 120);
+    const my = 85 + (i * 31) % 120;
+    ctx.fillStyle = i % 2 ? '#22ff88' : '#ff3366';
+    ctx.beginPath(); ctx.arc(mx, my, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  // player center
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(W - 105, 145, 4, 0, Math.PI * 2); ctx.fill();
+
+  // Crosshair (center)
+  const cx = W / 2, cy = H / 2;
+  ctx.strokeStyle = '#22ff88';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 18, cy); ctx.lineTo(cx - 6, cy);
+  ctx.moveTo(cx + 6, cy); ctx.lineTo(cx + 18, cy);
+  ctx.moveTo(cx, cy - 18); ctx.lineTo(cx, cy - 6);
+  ctx.moveTo(cx, cy + 6); ctx.lineTo(cx, cy + 18);
+  ctx.stroke();
+  ctx.fillStyle = '#22ff88';
+  ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  // Bottom HUD
+  ctx.fillStyle = '#ffaa00';
+  ctx.font = 'bold 22px "JetBrains Mono", monospace';
+  ctx.fillText(`AMMO  ${20 + Math.round(Math.sin(frame * 0.05) * 5)}/30`, 30, H - 30);
+  ctx.fillStyle = '#22ff88';
+  ctx.textAlign = 'right';
+  ctx.fillText('● LIVE - UMAR.HMM', W - 30, H - 30);
+  ctx.textAlign = 'left';
+
+  // Subtle scanline noise
+  if (frame % 4 === 0) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+    for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+  }
+}
+
+/* ============================================================
+   MONITOR WALL - mission-control style, replaces gaming station
+   Three monitors angled inward, each rendering live content:
+   - left: ROS-style code stream
+   - center: oscilloscope / joint velocity waveform
+   - right: 2D LiDAR scan
+   Console below with status LEDs.
+   ============================================================ */
+const monitorScreens = [];
+
+function buildMonitorWall() {
+  const grp = new THREE.Group();
+  grp.position.set(0, -1.0, -3.6);
+
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x111114, metalness: 0.4, roughness: 0.65 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x050507, metalness: 0.2, roughness: 0.95 });
+  const dimMat = new THREE.MeshStandardMaterial({ color: 0x0e0e10, metalness: 0.3, roughness: 0.9 });
+
+  // ---- Console / desk under the monitors ----
+  const consoleTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.05, 0.5), darkMat);
+  consoleTop.position.set(0, 0.78, 0);
+  grp.add(consoleTop);
+
+  // Thin red accent stripe along the front edge
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(3.6, 0.003, 0.008),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.4 })
+  );
+  stripe.position.set(0, 0.808, 0.252);
+  grp.add(stripe);
+
+  // legs
+  for (let lx of [-1, 1]) for (let lz of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.78, 0.05), blackMat);
+    leg.position.set(lx * 1.7, 0.39, lz * 0.2);
+    grp.add(leg);
+  }
+
+  // Status LED strip along the console front - alternating red and bone
+  for (let i = 0; i < 14; i++) {
+    const isRed = i % 4 === 0;
+    const led = new THREE.Mesh(
+      new THREE.CircleGeometry(0.009, 10),
+      new THREE.MeshBasicMaterial({ color: isRed ? 0xFF2D2D : 0xF5E6D3, transparent: true, opacity: 0.85 })
+    );
+    led.position.set(-1.55 + i * 0.24, 0.795, 0.256);
+    grp.add(led);
+  }
+
+  // A handful of "knobs" on the console
+  for (let kx of [-0.8, -0.4, 0.4, 0.8]) {
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.025, 16), dimMat);
+    knob.position.set(kx, 0.815, 0.1);
+    grp.add(knob);
+    const knobMark = new THREE.Mesh(
+      new THREE.BoxGeometry(0.005, 0.001, 0.025),
+      new THREE.MeshBasicMaterial({ color: 0xFF2D2D })
+    );
+    knobMark.position.set(kx, 0.829, 0.095);
+    grp.add(knobMark);
+  }
+
+  // ---- Three monitors ----
+  const monW = 1.0, monH = 0.6;
+  const slots = [
+    { x: -1.05, y: 1.4, z: -0.15, rotY:  0.18, content: 'code' },
+    { x:  0.00, y: 1.45, z: -0.20, rotY:  0,    content: 'graph' },
+    { x:  1.05, y: 1.4, z: -0.15, rotY: -0.18, content: 'lidar' }
+  ];
+
+  slots.forEach((s) => {
+    const monGrp = new THREE.Group();
+    monGrp.position.set(s.x, s.y, s.z);
+    monGrp.rotation.y = s.rotY;
+
+    // bezel
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(monW + 0.05, monH + 0.05, 0.04), blackMat);
+    monGrp.add(bezel);
+
+    // screen with canvas content
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 600;
+    const ctx = canvas.getContext('2d');
+    drawMonitor(ctx, canvas.width, canvas.height, s.content, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(monW, monH),
+      new THREE.MeshBasicMaterial({ map: tex })
+    );
+    screen.position.z = 0.025;
+    monGrp.add(screen);
+
+    // stand
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.05), blackMat);
+    stand.position.set(0, -monH / 2 - 0.18, 0);
+    monGrp.add(stand);
+    const standBase = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.025, 0.18), blackMat);
+    standBase.position.set(0, -monH / 2 - 0.35, 0);
+    monGrp.add(standBase);
+
+    grp.add(monGrp);
+    monitorScreens.push({ canvas, ctx, texture: tex, content: s.content, frame: Math.floor(Math.random() * 100) });
+  });
+
+  // Faint red rim glow above the monitors (back wall ambience)
+  const ambientGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.8, 0.5),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending })
+  );
+  ambientGlow.position.set(0, 2.1, -0.35);
+  grp.add(ambientGlow);
+
+  // Soft fill light from the monitors onto the arm
+  const monLight = new THREE.PointLight(0xfff4e0, 0.35, 5);
+  monLight.position.set(0, 1.5, 0.3);
+  grp.add(monLight);
+
+  scene.add(grp);
+}
+
+function drawMonitor(ctx, W, H, type, frame) {
+  // base background
+  ctx.fillStyle = '#080809';
+  ctx.fillRect(0, 0, W, H);
+
+  if (type === 'code')  drawMonitorCode(ctx, W, H, frame);
+  if (type === 'graph') drawMonitorGraph(ctx, W, H, frame);
+  if (type === 'lidar') drawMonitorLidar(ctx, W, H, frame);
+
+  // subtle scanlines (CRT vibe)
+  ctx.fillStyle = 'rgba(245, 230, 211, 0.012)';
+  for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+}
+
+function drawMonitorCode(ctx, W, H, frame) {
+  // header bar
+  ctx.fillStyle = '#F5E6D3';
+  ctx.font = 'bold 16px "JetBrains Mono", monospace';
+  ctx.fillText('node://unit_01/control', 24, 28);
+  // tiny red live dot
+  ctx.fillStyle = '#FF2D2D';
+  ctx.beginPath(); ctx.arc(W - 60, 23, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8A8A8A';
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('live', W - 24, 28);
+  ctx.textAlign = 'left';
+
+  // header underline
+  ctx.fillStyle = 'rgba(245, 230, 211, 0.1)';
+  ctx.fillRect(0, 44, W, 1);
+
+  const lines = [
+    '> rospy.init_node("unit_01")',
+    '> pub = rospy.Publisher("/joint_cmd", JointState)',
+    '> while not rospy.is_shutdown():',
+    '>   js = self.solve_ik(',
+    '>     target=self.ee_target,',
+    '>     iters=3, step=0.30, damp=0.22',
+    '>   )',
+    '>   pub.publish(js)',
+    '>   rate.sleep()',
+    '',
+    '[INFO] tracking active',
+    '[INFO] cycle 8412 · dt 0.0009s',
+    '[INFO] ee_pose updated · 5dof',
+    '[WARN] joint_3 nearing limit',
+    '[INFO] resuming nominal',
+    '[INFO] cycle 8413 · dt 0.0008s',
+    '[INFO] gripper open · payload null',
+  ];
+
+  ctx.font = '17px "JetBrains Mono", monospace';
+  const lineH = 28;
+  const scrollY = (frame * 0.45) % (lines.length * lineH);
+  for (let i = 0; i < lines.length * 2; i++) {
+    const line = lines[i % lines.length];
+    const y = 70 + i * lineH - scrollY;
+    if (y < 50 || y > H - 20) continue;
+    if (line.startsWith('[WARN]')) ctx.fillStyle = '#FF2D2D';
+    else if (line.startsWith('[INFO]')) ctx.fillStyle = '#F5E6D3';
+    else ctx.fillStyle = '#888888';
+    ctx.fillText(line, 24, y);
+  }
+}
+
+function drawMonitorGraph(ctx, W, H, frame) {
+  // header
+  ctx.fillStyle = '#F5E6D3';
+  ctx.font = 'bold 16px "JetBrains Mono", monospace';
+  ctx.fillText('joint_2 · angular velocity', 24, 28);
+  ctx.fillStyle = '#8A8A8A';
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('rad/s', W - 24, 28);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(245, 230, 211, 0.1)';
+  ctx.fillRect(0, 44, W, 1);
+
+  const top = 70, bot = H - 50;
+  // grid
+  ctx.strokeStyle = 'rgba(245, 230, 211, 0.07)';
+  ctx.lineWidth = 1;
+  for (let x = 24; x <= W - 24; x += 80) {
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke();
+  }
+  for (let y = top; y <= bot; y += 50) {
+    ctx.beginPath(); ctx.moveTo(24, y); ctx.lineTo(W - 24, y); ctx.stroke();
+  }
+  // zero baseline
+  ctx.strokeStyle = 'rgba(245, 230, 211, 0.18)';
+  const midY = (top + bot) / 2;
+  ctx.beginPath(); ctx.moveTo(24, midY); ctx.lineTo(W - 24, midY); ctx.stroke();
+
+  // primary waveform (bone)
+  ctx.strokeStyle = '#F5E6D3';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 24; x <= W - 24; x += 2) {
+    const v = Math.sin(x * 0.018 + frame * 0.03) * 70 +
+              Math.sin(x * 0.08 + frame * 0.015) * 30 +
+              Math.sin(x * 0.22) * 8;
+    if (x === 24) ctx.moveTo(x, midY + v * 0.55);
+    else ctx.lineTo(x, midY + v * 0.55);
+  }
+  ctx.stroke();
+  // secondary (faint red trace, the setpoint)
+  ctx.strokeStyle = 'rgba(255, 45, 45, 0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let x = 24; x <= W - 24; x += 2) {
+    const v = Math.sin(x * 0.025 - frame * 0.022) * 45;
+    if (x === 24) ctx.moveTo(x, midY + v * 0.55);
+    else ctx.lineTo(x, midY + v * 0.55);
+  }
+  ctx.stroke();
+
+  // axis labels
+  ctx.fillStyle = '#666';
+  ctx.font = '13px "JetBrains Mono", monospace';
+  ctx.fillText('-1.0s', 24, H - 22);
+  ctx.textAlign = 'center';
+  ctx.fillText('-0.5s', W / 2, H - 22);
+  ctx.textAlign = 'right';
+  ctx.fillText('now', W - 24, H - 22);
+}
+
+function drawMonitorLidar(ctx, W, H, frame) {
+  // header
+  ctx.fillStyle = '#F5E6D3';
+  ctx.font = 'bold 16px "JetBrains Mono", monospace';
+  ctx.fillText('lidar_scan · top-down', 24, 28);
+  ctx.fillStyle = '#8A8A8A';
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(`pts ${180 + (frame % 24)}`, W - 24, 28);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(245, 230, 211, 0.1)';
+  ctx.fillRect(0, 44, W, 1);
+
+  const cx = W / 2, cy = H / 2 + 18;
+
+  // concentric range rings
+  ctx.strokeStyle = 'rgba(255, 45, 45, 0.18)';
+  ctx.lineWidth = 1;
+  for (let r = 60; r <= 240; r += 60) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  // crosshair
+  ctx.strokeStyle = 'rgba(245, 230, 211, 0.12)';
+  ctx.beginPath();
+  ctx.moveTo(cx - 280, cy); ctx.lineTo(cx + 280, cy);
+  ctx.moveTo(cx, cy - 200); ctx.lineTo(cx, cy + 200);
+  ctx.stroke();
+
+  // scan rays (sweeping)
+  const sweep = (frame * 0.04) % (Math.PI * 2);
+  for (let i = 0; i < 8; i++) {
+    const a = sweep - i * 0.06;
+    ctx.strokeStyle = `rgba(255, 45, 45, ${0.4 - i * 0.05})`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * 240, cy + Math.sin(a) * 240);
+    ctx.stroke();
+  }
+
+  // hit points (a synthetic room boundary with some obstacles)
+  ctx.fillStyle = '#F5E6D3';
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 90) {
+    let r = 200;
+    // make a rough rectangular room
+    const ax = Math.cos(a), ay = Math.sin(a);
+    if (Math.abs(ax) > Math.abs(ay)) r = 200 / Math.abs(ax);
+    else r = 160 / Math.abs(ay);
+    r = Math.min(r, 230);
+    r += Math.sin(a * 6 + frame * 0.015) * 8;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    ctx.beginPath(); ctx.arc(px, py, 1.4, 0, Math.PI * 2); ctx.fill();
+  }
+  // a couple of dynamic obstacles (moving dots)
+  for (let i = 0; i < 3; i++) {
+    const a = frame * 0.005 + i * 2.1;
+    const r = 100 + Math.sin(frame * 0.03 + i) * 30;
+    ctx.fillStyle = '#FF2D2D';
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // origin (the robot)
+  ctx.fillStyle = '#FF2D2D';
+  ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#FF2D2D';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(sweep) * 14, cy + Math.sin(sweep) * 14);
+  ctx.stroke();
+}
+
+/* ============================================================
+   SECOND ARM - smaller rest-pose arm in the back-left, idling
+   Different gripper (3-finger claw) to telegraph variety of work.
+   ============================================================ */
+let secondArm = null;
+
+function buildSecondArm() {
+  const grp = new THREE.Group();
+  // ── CUSTOMIZATION: position, scale, pose of the secondary arm ──
+  grp.position.set(-3.2, -1.0, -1.8);
+  grp.scale.setScalar(0.55);
+  grp.rotation.y = 0.5;  // turned slightly toward camera
+
+  // Base
+  const basePlate = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.08, 24), matDark());
+  basePlate.position.y = 0.04; grp.add(basePlate);
+  const baseCap = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.16, 24), matBone());
+  baseCap.position.y = 0.16; grp.add(baseCap);
+  const baseRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.46, 0.012, 8, 24),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.55 })
+  );
+  baseRing.rotation.x = Math.PI / 2; baseRing.position.y = 0.24; grp.add(baseRing);
+
+  // J0 housing
+  const j0 = new THREE.Group();
+  j0.position.y = 0.24;
+  j0.rotation.y = -0.3;
+  grp.add(j0);
+  const housing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.32, 0.5), matRed());
+  housing.position.y = 0.17; j0.add(housing);
+  const housingBand = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.06, 0.52), matDark());
+  housingBand.position.y = 0.28; j0.add(housingBand);
+
+  // J1 shoulder (pose: angled back as if resting)
+  const j1 = new THREE.Group();
+  j1.position.y = 0.34;
+  j1.rotation.x = -0.4;
+  j0.add(j1);
+  const j1Pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.42, 16), matDark());
+  j1Pivot.rotation.z = Math.PI / 2; j1.add(j1Pivot);
+  const j1CapL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 16), matBone());
+  j1CapL.rotation.z = Math.PI / 2; j1CapL.position.x = 0.22; j1.add(j1CapL);
+  const j1CapR = j1CapL.clone(); j1CapR.position.x = -0.22; j1.add(j1CapR);
+
+  const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.12, 1.0, 14), matRed());
+  upperArm.position.y = 0.55; j1.add(upperArm);
+  for (let i = 0; i < 3; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.012, 6, 16), matBone());
+    rib.rotation.x = Math.PI / 2; rib.position.y = 0.25 + i * 0.3; j1.add(rib);
+  }
+
+  // J2 elbow (bent inward - at-rest fold)
+  const j2 = new THREE.Group();
+  j2.position.y = 1.05;
+  j2.rotation.x = 1.6;
+  j1.add(j2);
+  const j2Pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.32, 14), matDark());
+  j2Pivot.rotation.z = Math.PI / 2; j2.add(j2Pivot);
+  const j2Cap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 14), matBone());
+  j2Cap.rotation.z = Math.PI / 2; j2Cap.position.x = 0.17; j2.add(j2Cap);
+  const j2Cap2 = j2Cap.clone(); j2Cap2.position.x = -0.17; j2.add(j2Cap2);
+
+  const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.105, 0.85, 14), matRed());
+  forearm.position.y = 0.45; j2.add(forearm);
+
+  // J3 wrist
+  const j3 = new THREE.Group();
+  j3.position.y = 0.88;
+  j3.rotation.x = 0.4;
+  j2.add(j3);
+  const wristPivot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.2, 14), matDark());
+  wristPivot.rotation.z = Math.PI / 2; j3.add(wristPivot);
+  const wristHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.18, 14), matRed());
+  wristHousing.position.y = 0.18; j3.add(wristHousing);
+
+  // ---- 3-finger claw end effector (distinct from main arm's 2-finger gripper) ----
+  const eeBase = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.085, 0.07, 12), matDark());
+  eeBase.position.y = 0.31; j3.add(eeBase);
+  // 3 fingers arranged in 120° formation
+  for (let i = 0; i < 3; i++) {
+    const angle = (i * Math.PI * 2) / 3;
+    const fingerBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.05), matBone());
+    fingerBase.position.set(Math.cos(angle) * 0.055, 0.36, Math.sin(angle) * 0.055);
+    fingerBase.rotation.y = -angle;
+    j3.add(fingerBase);
+    const finger = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.12, 0.03), matBone());
+    finger.position.set(Math.cos(angle) * 0.06, 0.45, Math.sin(angle) * 0.06);
+    finger.rotation.y = -angle;
+    finger.rotation.x = -0.15;
+    j3.add(finger);
+  }
+  // Faint tip indicator (smaller, dimmer than the main arm)
+  const tip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.02, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.55 })
+  );
+  tip.position.y = 0.55; j3.add(tip);
+
+  scene.add(grp);
+
+  // Store joint refs for subtle idle sway
+  secondArm = {
+    root: grp,
+    joints: [
+      { obj: j0, axis: 'y', base: -0.3, amp: 0.05, speed: 0.4, phase: 0.0 },
+      { obj: j1, axis: 'x', base: -0.4, amp: 0.04, speed: 0.30, phase: 0.5 },
+      { obj: j2, axis: 'x', base:  1.6, amp: 0.03, speed: 0.26, phase: 1.2 },
+      { obj: j3, axis: 'x', base:  0.4, amp: 0.025, speed: 0.34, phase: 2.0 }
+    ]
+  };
+}
+
+/* ============================================================
+   MATERIALS
+   ============================================================ */
+function matRed()  { return new THREE.MeshStandardMaterial({ color: 0xC71F1F, metalness: 0.65, roughness: 0.4, emissive: 0xFF2D2D, emissiveIntensity: 0.08 }); }
+function matBone() { return new THREE.MeshStandardMaterial({ color: 0xF5E6D3, metalness: 0.55, roughness: 0.4, emissive: 0xF5E6D3, emissiveIntensity: 0.05 }); }
+function matDark() { return new THREE.MeshStandardMaterial({ color: 0x1a1a1d, metalness: 0.85, roughness: 0.45 }); }
+function matGlow(color, opacity = 0.85) { return new THREE.MeshBasicMaterial({ color, transparent: true, opacity }); }
+
+/* ============================================================
+   ARM - UR3-style 6-DOF robotic arm with 2-finger gripper.
+   ============================================================ */
+function buildArm() {
+  const armRoot = new THREE.Group();
+  armRoot.position.set(0, -1.0, 0);
+  scene.add(armRoot);
+
+  // Base plate + cap
+  const basePlate = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.08, 32), matDark());
+  basePlate.position.y = 0.04; armRoot.add(basePlate);
+  const baseCap = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.16, 32), matBone());
+  baseCap.position.y = 0.16; armRoot.add(baseCap);
+  const baseRing = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.014, 8, 32), matGlow(0xFF2D2D, 0.9));
+  baseRing.rotation.x = Math.PI / 2; baseRing.position.y = 0.24; armRoot.add(baseRing);
+
+  // J0: base yaw
+  const j0 = new THREE.Group(); j0.position.y = 0.24; armRoot.add(j0);
+  arm.joints.push({ obj: j0, axis: 'y', current: 0, target: 0, min: -Math.PI, max: Math.PI });
+  const j0Housing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.32, 0.5), matRed());
+  j0Housing.position.y = 0.17; j0.add(j0Housing);
+  arm.grabbable.push({ mesh: j0Housing, jointIdx: 0 });
+  const j0Band = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.06, 0.52), matDark());
+  j0Band.position.y = 0.28; j0.add(j0Band);
+
+  // J1: shoulder pitch
+  const j1 = new THREE.Group(); j1.position.y = 0.34; j0.add(j1);
+  arm.joints.push({ obj: j1, axis: 'x', current: 0.4, target: 0.4, min: -1.4, max: 1.6 });
+  const j1Pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.42, 24), matDark());
+  j1Pivot.rotation.z = Math.PI / 2; j1.add(j1Pivot);
+  const j1CapL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 24), matBone());
+  j1CapL.rotation.z = Math.PI / 2; j1CapL.position.x = 0.22; j1.add(j1CapL);
+  const j1CapR = j1CapL.clone(); j1CapR.position.x = -0.22; j1.add(j1CapR);
+  const j1Dot = new THREE.Mesh(new THREE.CircleGeometry(0.04, 16), matGlow(0xFF2D2D));
+  j1Dot.position.set(0.245, 0, 0); j1Dot.rotation.y = Math.PI / 2; j1.add(j1Dot);
+  arm.grabbable.push({ mesh: j1Pivot, jointIdx: 1 });
+
+  // Upper arm
+  const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.12, 1.0, 16), matRed());
+  upperArm.position.y = 0.55; j1.add(upperArm);
+  arm.grabbable.push({ mesh: upperArm, jointIdx: 2 });
+  for (let i = 0; i < 3; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.012, 6, 20), matBone());
+    rib.rotation.x = Math.PI / 2; rib.position.y = 0.25 + i * 0.3; j1.add(rib);
+  }
+  const upperCable = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.9, 8), matDark());
+  upperCable.position.set(0, 0.55, 0.115); j1.add(upperCable);
+
+  // J2: elbow
+  const j2 = new THREE.Group(); j2.position.y = 1.05; j1.add(j2);
+  arm.joints.push({ obj: j2, axis: 'x', current: -0.9, target: -0.9, min: -2.4, max: 2.4 });
+  const j2Pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.32, 20), matDark());
+  j2Pivot.rotation.z = Math.PI / 2; j2.add(j2Pivot);
+  const j2Cap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 20), matBone());
+  j2Cap.rotation.z = Math.PI / 2; j2Cap.position.x = 0.17; j2.add(j2Cap);
+  const j2Cap2 = j2Cap.clone(); j2Cap2.position.x = -0.17; j2.add(j2Cap2);
+  const j2Dot = new THREE.Mesh(new THREE.CircleGeometry(0.035, 16), matGlow(0xFF2D2D));
+  j2Dot.position.set(0.195, 0, 0); j2Dot.rotation.y = Math.PI / 2; j2.add(j2Dot);
+
+  // Forearm
+  const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.105, 0.85, 16), matRed());
+  forearm.position.y = 0.45; j2.add(forearm);
+  arm.grabbable.push({ mesh: forearm, jointIdx: 3 });
+  for (let i = 0; i < 2; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.01, 6, 20), matBone());
+    rib.rotation.x = Math.PI / 2; rib.position.y = 0.2 + i * 0.4; j2.add(rib);
+  }
+
+  // J3: wrist pitch
+  const j3 = new THREE.Group(); j3.position.y = 0.88; j2.add(j3);
+  arm.joints.push({ obj: j3, axis: 'x', current: 0.5, target: 0.5, min: -2.2, max: 2.2 });
+  const j3Pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.2, 16), matDark());
+  j3Pivot.rotation.z = Math.PI / 2; j3.add(j3Pivot);
+  const j3CapL = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.03, 18), matBone());
+  j3CapL.rotation.z = Math.PI / 2; j3CapL.position.x = 0.11; j3.add(j3CapL);
+  const j3CapR = j3CapL.clone(); j3CapR.position.x = -0.11; j3.add(j3CapR);
+  const j3Dot = new THREE.Mesh(new THREE.CircleGeometry(0.03, 16), matGlow(0xFF2D2D));
+  j3Dot.position.set(0.127, 0, 0); j3Dot.rotation.y = Math.PI / 2; j3.add(j3Dot);
+  arm.grabbable.push({ mesh: j3Pivot, jointIdx: 4 });
+
+  // J4: wrist yaw
+  const j4 = new THREE.Group(); j4.position.y = 0.12; j3.add(j4);
+  arm.joints.push({ obj: j4, axis: 'y', current: 0, target: 0, min: -Math.PI, max: Math.PI });
+  const wristHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.18, 16), matRed());
+  wristHousing.position.y = 0.1; j4.add(wristHousing);
+  const j4CollarT = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.072, 0.025, 18), matBone());
+  j4CollarT.position.y = 0.185; j4.add(j4CollarT);
+  const j4CollarB = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.082, 0.025, 18), matBone());
+  j4CollarB.position.y = 0.02; j4.add(j4CollarB);
+
+  // End-effector
+  const eeGroup = new THREE.Group();
+  eeGroup.position.y = 0.2;
+  j4.add(eeGroup);
+
+  const eeBase = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.1), matDark());
+  eeBase.position.y = 0.04; eeGroup.add(eeBase);
+  const eeStripe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.01, 0.11), matGlow(0xFF2D2D));
+  eeStripe.position.y = 0.07; eeGroup.add(eeStripe);
+  const finger1 = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.13, 0.07), matBone());
+  finger1.position.set(0.07, 0.13, 0); eeGroup.add(finger1);
+  const finger2 = finger1.clone(); finger2.position.x = -0.07; eeGroup.add(finger2);
+  arm.fingers.push(finger1, finger2);
+
+  // Tip - where the cursor "lives"
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 16), new THREE.MeshBasicMaterial({ color: 0xFF2D2D }));
+  tip.position.y = 0.22; eeGroup.add(tip);
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  tip.add(halo);
+  const haloBig = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  tip.add(haloBig);
+
+  arm.root = armRoot;
+  arm.tip = tip;
+  arm.tipHalo = halo;
+  arm.eeGroup = eeGroup;
+
+  // arm ready at home pose immediately - no boot sequence
+  arm.joints.forEach(j => { j.bootStart = j.current; });
+  arm.root.scale.setScalar(1);
+}
+
+/* ============================================================
+   GRIPPER FINGERS - lerps arm.gripperOpenness toward target,
+   moves the two fingers in/out along their local X axis.
+   ============================================================ */
+function updateGripperFingers(dt) {
+  if (!arm.fingers || arm.fingers.length < 2) return;
+  // Lerp current openness toward target
+  const k = 0.18;
+  arm.gripperOpenness += (arm.gripperTarget - arm.gripperOpenness) * k;
+  const x = arm.baseFingerX * arm.gripperOpenness;
+  arm.fingers[0].position.x =  x;
+  arm.fingers[1].position.x = -x;
+}
+
+/* ============================================================
+   HUMANOID HOLOGRAM - hierarchical skeleton (pelvis → torso →
+   shoulders → upper arms → elbows → forearms → hands → propellers).
+   This hierarchy is what makes the mechanical transformation work:
+   rotating the shoulder rotates the WHOLE arm, just like a real robot.
+   ============================================================ */
+let humanoid = null;
+
+const HOLO_BONE = 0xF5E6D3;
+const HOLO_RED  = 0xFF2D2D;
+
+/* ============================================================
+   SENTINEL MECH (robot) - solid bipedal mech with a hierarchical
+   skeleton. Folds into a compact form before the drone emerges.
+   ============================================================ */
+let robot = null;
+
+function buildSentinelMech() {
+  // 9d · Modern-fusion cyber-samurai
+  // Carbon plate armor with wide LED visor, smooth modern panels, red LED accent seams.
+  // Joint hierarchy identical to previous sentinel so the parts-only transformation still works.
+  const root = new THREE.Group();
+  root.position.set(0, -1.0, -4.8);
+  root.scale.setScalar(1.0);
+  scene.add(root);
+
+  robot = { root, joints: {}, bobBase: -1.0 };
+
+  // ====== MATERIALS ======
+  function mCarbon() { return new THREE.MeshStandardMaterial({ color: 0x2a2a34, metalness: 0.35, roughness: 0.6,  emissive: 0x000000, emissiveIntensity: 0 }); }
+  function mPanel()  { return new THREE.MeshStandardMaterial({ color: 0x3c3c46, metalness: 0.45, roughness: 0.55, emissive: 0x000000, emissiveIntensity: 0 }); }
+  function mBone()   { return new THREE.MeshStandardMaterial({ color: 0xF5E6D3, metalness: 0.1,  roughness: 0.6,  emissive: 0x000000, emissiveIntensity: 0 }); }
+  function mBoneDim(){ return new THREE.MeshStandardMaterial({ color: 0xB8A98A, metalness: 0.15, roughness: 0.7,  emissive: 0x000000, emissiveIntensity: 0 }); }
+  function mGasket() { return new THREE.MeshStandardMaterial({ color: 0x0c0c0e, metalness: 0.2, roughness: 0.7 }); }
+  function mMetal()  { return new THREE.MeshStandardMaterial({ color: 0x44444a, metalness: 0.7, roughness: 0.4 }); }
+  function mGlow(op) { return new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: op == null ? 0.95 : op }); }
+  function mHalo(op) { return new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: op == null ? 0.4 : op, blending: THREE.AdditiveBlending, depthWrite: false }); }
+  function mLabel()  { return new THREE.MeshBasicMaterial({ color: 0xF5E6D3, transparent: true, opacity: 0.7 }); }
+
+  function add(parent, geo, mat, x, y, z, rx, ry, rz) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x || 0, y || 0, z || 0);
+    m.rotation.set(rx || 0, ry || 0, rz || 0);
+    parent.add(m);
+    return m;
+  }
+
+  // ====== PELVIS (root joint) ======
+  const pelvis = new THREE.Group();
+  pelvis.position.set(0, 1.55, 0);
+  root.add(pelvis);
+  robot.joints.pelvis = pelvis;
+
+  // Pelvis core - smooth carbon block with belt accent
+  add(pelvis, new THREE.BoxGeometry(0.5, 0.18, 0.34), mCarbon());
+  add(pelvis, new THREE.BoxGeometry(0.48, 0.005, 0.32), mGlow(0.65), 0, 0.092, 0);
+  add(pelvis, new THREE.BoxGeometry(0.5, 0.04, 0.35), mBone(), 0, -0.07, 0);
+  add(pelvis, new THREE.BoxGeometry(0.012, 0.18, 0.005), mGlow(0.9), 0, 0, 0.171);
+
+  // ====== TORSO (layered dou chest plates) ======
+  const torso = new THREE.Group();
+  torso.position.set(0, 0.13, 0);
+  pelvis.add(torso);
+  robot.joints.torso = torso;
+
+  // Three stacked dou plates - smooth modern interpretation of layered samurai armor
+  add(torso, new THREE.BoxGeometry(0.62, 0.18, 0.42), mCarbon(), 0, 0.05, 0);
+  add(torso, new THREE.BoxGeometry(0.6,  0.16, 0.41), mCarbon(), 0, 0.22, 0);
+  add(torso, new THREE.BoxGeometry(0.55, 0.14, 0.38), mCarbon(), 0, 0.38, 0);
+
+  // LED seam lines between plates
+  add(torso, new THREE.BoxGeometry(0.61, 0.005, 0.43), mGlow(0.75), 0, 0.14, 0);
+  add(torso, new THREE.BoxGeometry(0.57, 0.005, 0.4),  mGlow(0.75), 0, 0.31, 0);
+
+  // Bone-color odoshi lacing between the dou plates (the signature samurai detail)
+  add(torso, new THREE.BoxGeometry(0.62, 0.012, 0.005), mBone(), 0, 0.155, 0.211);
+  add(torso, new THREE.BoxGeometry(0.62, 0.012, 0.005), mBone(), 0, 0.155, -0.211);
+  add(torso, new THREE.BoxGeometry(0.58, 0.012, 0.005), mBone(), 0, 0.325, 0.191);
+  add(torso, new THREE.BoxGeometry(0.58, 0.012, 0.005), mBone(), 0, 0.325, -0.191);
+  // Bone trim along top edge of the topmost plate
+  add(torso, new THREE.BoxGeometry(0.56, 0.012, 0.005), mBone(), 0, 0.455, 0.191);
+  add(torso, new THREE.BoxGeometry(0.56, 0.012, 0.005), mBone(), 0, 0.455, -0.191);
+
+  // Vertical center red LED seam (the modern-fusion signature)
+  add(torso, new THREE.BoxGeometry(0.018, 0.48, 0.005), mGlow(0.95), 0, 0.22, 0.21);
+
+  // Side LED accents (subtle)
+  add(torso, new THREE.BoxGeometry(0.005, 0.4, 0.014), mGlow(0.6),  0.305, 0.22, 0);
+  add(torso, new THREE.BoxGeometry(0.005, 0.4, 0.014), mGlow(0.6), -0.305, 0.22, 0);
+
+  // Bone-color panel labels (tiny, like product stickers)
+  add(torso, new THREE.BoxGeometry(0.05, 0.014, 0.002), mLabel(), 0.18,  0.36, 0.211);
+  add(torso, new THREE.BoxGeometry(0.03, 0.009, 0.002), mLabel(), 0.225, 0.32, 0.211);
+
+  // ====== NECK ======
+  const neck = new THREE.Group();
+  neck.position.set(0, 0.5, 0);
+  torso.add(neck);
+  robot.joints.neck = neck;
+
+  add(neck, new THREE.CylinderGeometry(0.08, 0.09, 0.14, 12), mGasket());
+  add(neck, new THREE.CylinderGeometry(0.1,  0.1,  0.025, 12), mPanel(), 0, 0.05, 0);
+
+  // ====== HEAD (kabuto helmet) ======
+  const head = new THREE.Group();
+  head.position.set(0, 0.11, 0);
+  neck.add(head);
+  robot.joints.head = head;
+
+  // Helmet dome - carbon, smooth & modern
+  add(head, new THREE.SphereGeometry(0.22, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.7), mCarbon(), 0, 0.07, 0);
+  // Lower helmet box (provides the menpo/face plate area)
+  add(head, new THREE.BoxGeometry(0.36, 0.18, 0.34), mCarbon(), 0, 0.04, 0);
+
+  // Wide red LED visor - the modern-fusion identity element
+  add(head, new THREE.BoxGeometry(0.34, 0.06, 0.004), mGlow(0.98), 0, 0.06, 0.175);
+  const visorHalo = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.005), mHalo(0.6));
+  visorHalo.position.set(0, 0.06, 0.176);
+  head.add(visorHalo);
+  // Inner visor edge (thin dark line for definition)
+  add(head, new THREE.BoxGeometry(0.34, 0.005, 0.005), mGasket(), 0, 0.085, 0.177);
+
+  // Cheek vents (4 small red slats, 2 per side)
+  for (let s = -1; s <= 1; s += 2) {
+    add(head, new THREE.BoxGeometry(0.05, 0.006, 0.003), mGlow(0.75), s * 0.085, -0.005, 0.176);
+    add(head, new THREE.BoxGeometry(0.05, 0.006, 0.003), mGlow(0.75), s * 0.085, -0.025, 0.176);
+  }
+
+  // Fukigaeshi (modern minimal side wings, angled outward)
+  for (let s = -1; s <= 1; s += 2) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.13, 0.025), mCarbon());
+    wing.position.set(s * 0.2, 0.02, 0);
+    wing.rotation.z = s * -0.22;
+    head.add(wing);
+  }
+
+  // Subtle samurai crest ridge along the top of the helmet
+  add(head, new THREE.BoxGeometry(0.035, 0.045, 0.32), mBone(), 0, 0.21, 0);
+  // Crest LED line (very subtle)
+  add(head, new THREE.BoxGeometry(0.005, 0.005, 0.3), mGlow(0.6), 0, 0.235, 0);
+
+  // Bone lacing trim around the bottom rim of the kabuto (the cord that secured the helmet)
+  add(head, new THREE.BoxGeometry(0.37, 0.012, 0.005), mBone(), 0, -0.052, 0.171);
+  add(head, new THREE.BoxGeometry(0.37, 0.012, 0.005), mBone(), 0, -0.052, -0.171);
+  add(head, new THREE.BoxGeometry(0.005, 0.012, 0.34), mBone(), 0.183, -0.052, 0);
+  add(head, new THREE.BoxGeometry(0.005, 0.012, 0.34), mBone(), -0.183, -0.052, 0);
+
+  // Antenna stub on back of helmet
+  add(head, new THREE.CylinderGeometry(0.008, 0.008, 0.06, 6), mPanel(), 0, 0.22, -0.1);
+  add(head, new THREE.SphereGeometry(0.013, 8, 8), mGlow(0.85), 0, 0.255, -0.1);
+
+  // ====== ARM CHAIN ======
+  function armChain(side) {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(side * 0.42, 0.5, 0);
+    torso.add(shoulder);
+
+    // Sode pauldron (samurai shoulder plate, modernized - smooth carbon)
+    add(shoulder, new THREE.BoxGeometry(0.2, 0.22, 0.18), mCarbon(), side * 0.05, -0.04, 0);
+    // Top trim - bone-color (the odoshi cord that ties the pauldron together)
+    add(shoulder, new THREE.BoxGeometry(0.2, 0.014, 0.18), mBone(), side * 0.05, 0.072, 0);
+    // Bone lacing strips across the pauldron face
+    add(shoulder, new THREE.BoxGeometry(0.2, 0.01, 0.005), mBone(), side * 0.05, 0.03, 0.091);
+    add(shoulder, new THREE.BoxGeometry(0.2, 0.01, 0.005), mBone(), side * 0.05, -0.04, 0.091);
+    add(shoulder, new THREE.BoxGeometry(0.2, 0.01, 0.005), mBone(), side * 0.05, 0.03, -0.091);
+    add(shoulder, new THREE.BoxGeometry(0.2, 0.01, 0.005), mBone(), side * 0.05, -0.04, -0.091);
+    // LED seams across the pauldron
+    add(shoulder, new THREE.BoxGeometry(0.18, 0.004, 0.18), mGlow(0.85), side * 0.05, 0.005, 0);
+    add(shoulder, new THREE.BoxGeometry(0.18, 0.003, 0.18), mGlow(0.55), side * 0.05, -0.085, 0);
+
+    // Inner shoulder ball joint
+    add(shoulder, new THREE.SphereGeometry(0.078, 14, 12), mMetal());
+
+    const upper = new THREE.Group();
+    shoulder.add(upper);
+
+    // Upper arm plate
+    add(upper, new THREE.BoxGeometry(0.12, 0.32, 0.13), mCarbon(), 0, -0.18, 0);
+    // LED accent bands
+    add(upper, new THREE.BoxGeometry(0.125, 0.004, 0.005), mGlow(0.7), 0, -0.06, 0.067);
+    add(upper, new THREE.BoxGeometry(0.125, 0.004, 0.005), mGlow(0.7), 0, -0.29, 0.067);
+
+    const elbow = new THREE.Group();
+    elbow.position.set(0, -0.36, 0);
+    upper.add(elbow);
+
+    add(elbow, new THREE.SphereGeometry(0.07, 12, 10), mMetal());
+    add(elbow, new THREE.BoxGeometry(0.14, 0.055, 0.14), mCarbon());
+    // Bone trim along elbow guard edges
+    add(elbow, new THREE.BoxGeometry(0.142, 0.008, 0.005), mBone(), 0, 0.025, 0.071);
+    add(elbow, new THREE.BoxGeometry(0.142, 0.008, 0.005), mBone(), 0, -0.025, 0.071);
+
+    const forearm = new THREE.Group();
+    elbow.add(forearm);
+
+    add(forearm, new THREE.BoxGeometry(0.11, 0.28, 0.12), mCarbon(), 0, -0.17, 0);
+    add(forearm, new THREE.BoxGeometry(0.12, 0.003, 0.005), mGlow(0.7), 0, -0.27, 0.062);
+
+    const hand = new THREE.Group();
+    hand.position.set(0, -0.34, 0);
+    forearm.add(hand);
+
+    // Gauntlet
+    add(hand, new THREE.BoxGeometry(0.12, 0.15, 0.1), mCarbon(), 0, -0.06, 0);
+    // Bone trim ring at wrist
+    add(hand, new THREE.BoxGeometry(0.125, 0.012, 0.105), mBone(), 0, 0.005, 0);
+    add(hand, new THREE.BoxGeometry(0.12, 0.005, 0.003), mGlow(0.85), 0, -0.04, 0.051);
+    // Thumb stub
+    add(hand, new THREE.BoxGeometry(0.025, 0.07, 0.025), mCarbon(), side * 0.06, -0.04, 0.025);
+
+    // Hidden hand propeller (deploys during transformation)
+    const handProp = new THREE.Group();
+    handProp.position.set(0, 0, -0.06);
+    handProp.rotation.x = -Math.PI / 2;
+    handProp.scale.setScalar(0);
+    hand.add(handProp);
+    add(handProp, new THREE.CylinderGeometry(0.05, 0.052, 0.04, 14), mPanel());
+    add(handProp, new THREE.CylinderGeometry(0.04, 0.046, 0.014, 14), mPanel(), 0, 0.027, 0);
+    const handLedRing = new THREE.Mesh(new THREE.TorusGeometry(0.054, 0.005, 6, 18), mGlow(0.9));
+    handLedRing.position.y = -0.022;
+    handLedRing.rotation.x = Math.PI / 2;
+    handProp.add(handLedRing);
+    const handBlades = new THREE.Group();
+    handBlades.position.y = 0.05;
+    handProp.add(handBlades);
+    add(handBlades, new THREE.CylinderGeometry(0.014, 0.014, 0.008, 10), mMetal());
+    const HB_L = 0.22;
+    const hbBlade1 = new THREE.Mesh(new THREE.BoxGeometry(HB_L, 0.004, 0.022), mPanel());
+    hbBlade1.rotation.z = 0.08;
+    handBlades.add(hbBlade1);
+    const hbBlade2 = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.004, HB_L), mPanel());
+    hbBlade2.rotation.x = -0.08;
+    handBlades.add(hbBlade2);
+    add(handBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7),  HB_L/2 - 0.005, 0, 0);
+    add(handBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7), -HB_L/2 + 0.005, 0, 0);
+    add(handBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7), 0, 0,  HB_L/2 - 0.005);
+    add(handBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7), 0, 0, -HB_L/2 + 0.005);
+
+    const prefix = side < 0 ? 'left' : 'right';
+    robot.joints[prefix + 'Shoulder'] = shoulder;
+    robot.joints[prefix + 'Upper']    = upper;
+    robot.joints[prefix + 'Elbow']    = elbow;
+    robot.joints[prefix + 'Forearm']  = forearm;
+    robot.joints[prefix + 'Hand']     = hand;
+    robot.joints[prefix + 'Prop']     = handProp;
+    robot.joints[prefix + 'Blades']   = handBlades;
+  }
+  armChain(-1);
+  armChain(+1);
+
+  // ====== LEG CHAIN ======
+  function legChain(side) {
+    const hip = new THREE.Group();
+    hip.position.set(side * 0.17, -0.04, 0);
+    pelvis.add(hip);
+    add(hip, new THREE.SphereGeometry(0.085, 14, 12), mMetal());
+
+    const thigh = new THREE.Group();
+    hip.add(thigh);
+
+    // Haidate / cuisse - modern smooth thigh plate
+    add(thigh, new THREE.BoxGeometry(0.18, 0.5, 0.18), mCarbon(), 0, -0.3, 0);
+    add(thigh, new THREE.BoxGeometry(0.18, 0.004, 0.005), mGlow(0.75), 0, -0.18, 0.091);
+    add(thigh, new THREE.BoxGeometry(0.18, 0.004, 0.005), mGlow(0.55), 0, -0.42, 0.091);
+
+    const knee = new THREE.Group();
+    knee.position.set(0, -0.6, 0);
+    thigh.add(knee);
+    add(knee, new THREE.SphereGeometry(0.075, 12, 10), mMetal());
+    add(knee, new THREE.BoxGeometry(0.16, 0.06, 0.16), mCarbon());
+    // Bone trim along knee guard edges
+    add(knee, new THREE.BoxGeometry(0.162, 0.01, 0.005), mBone(), 0, 0.028, 0.081);
+    add(knee, new THREE.BoxGeometry(0.162, 0.01, 0.005), mBone(), 0, -0.028, 0.081);
+
+    const shin = new THREE.Group();
+    knee.add(shin);
+    // Suneate (shin greave)
+    add(shin, new THREE.BoxGeometry(0.16, 0.5, 0.16), mCarbon(), 0, -0.28, 0);
+    add(shin, new THREE.BoxGeometry(0.16, 0.005, 0.005), mGlow(0.85), 0, -0.42, 0.081);
+    // Bone lacing strips on shin greave
+    add(shin, new THREE.BoxGeometry(0.165, 0.01, 0.005), mBone(), 0, -0.08, 0.081);
+    add(shin, new THREE.BoxGeometry(0.165, 0.01, 0.005), mBone(), 0, -0.18, 0.081);
+    add(shin, new THREE.BoxGeometry(0.165, 0.01, 0.005), mBone(), 0, -0.3, 0.081);
+
+    const foot = new THREE.Group();
+    foot.position.set(0, -0.57, 0.04);
+    shin.add(foot);
+    // Boot/foot armor
+    add(foot, new THREE.BoxGeometry(0.16, 0.07, 0.3), mCarbon(), 0, -0.035, 0.04);
+    add(foot, new THREE.BoxGeometry(0.16, 0.015, 0.3), mPanel(), 0, -0.075, 0.04);
+    // Bone trim ring around boot top
+    add(foot, new THREE.BoxGeometry(0.165, 0.01, 0.305), mBone(), 0, 0.003, 0.04);
+    // Toe LED accent
+    add(foot, new THREE.BoxGeometry(0.16, 0.005, 0.025), mGlow(0.85), 0, -0.02, 0.19);
+    // Heel
+    add(foot, new THREE.BoxGeometry(0.1, 0.06, 0.05), mCarbon(), 0, -0.04, -0.09);
+
+    // Hidden foot propeller (deploys during transformation)
+    const footProp = new THREE.Group();
+    footProp.position.set(0, 0, -0.06);
+    footProp.rotation.x = -Math.PI / 2;
+    footProp.scale.setScalar(0);
+    foot.add(footProp);
+    add(footProp, new THREE.CylinderGeometry(0.05, 0.052, 0.04, 14), mPanel());
+    add(footProp, new THREE.CylinderGeometry(0.04, 0.046, 0.014, 14), mPanel(), 0, 0.027, 0);
+    const footLedRing = new THREE.Mesh(new THREE.TorusGeometry(0.054, 0.005, 6, 18), mGlow(0.9));
+    footLedRing.position.y = -0.022;
+    footLedRing.rotation.x = Math.PI / 2;
+    footProp.add(footLedRing);
+    const footBlades = new THREE.Group();
+    footBlades.position.y = 0.05;
+    footProp.add(footBlades);
+    add(footBlades, new THREE.CylinderGeometry(0.014, 0.014, 0.008, 10), mMetal());
+    const FB_L = 0.22;
+    const fbBlade1 = new THREE.Mesh(new THREE.BoxGeometry(FB_L, 0.004, 0.022), mPanel());
+    fbBlade1.rotation.z = 0.08;
+    footBlades.add(fbBlade1);
+    const fbBlade2 = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.004, FB_L), mPanel());
+    fbBlade2.rotation.x = -0.08;
+    footBlades.add(fbBlade2);
+    add(footBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7),  FB_L/2 - 0.005, 0, 0);
+    add(footBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7), -FB_L/2 + 0.005, 0, 0);
+    add(footBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7), 0, 0,  FB_L/2 - 0.005);
+    add(footBlades, new THREE.BoxGeometry(0.024, 0.005, 0.024), mGlow(0.7), 0, 0, -FB_L/2 + 0.005);
+
+    const prefix = side < 0 ? 'left' : 'right';
+    robot.joints[prefix + 'Hip']        = hip;
+    robot.joints[prefix + 'Thigh']      = thigh;
+    robot.joints[prefix + 'Knee']       = knee;
+    robot.joints[prefix + 'Shin']       = shin;
+    robot.joints[prefix + 'Foot']       = foot;
+    robot.joints[prefix + 'FootProp']   = footProp;
+    robot.joints[prefix + 'FootBlades'] = footBlades;
+  }
+  legChain(-1);
+  legChain(+1);
+
+  // Save initial transforms - referenced by applyRobotToDrone() during transformation
+  Object.entries(robot.joints).forEach(function (entry) {
+    const jt = entry[1];
+    jt.userData.initRot   = jt.rotation.clone();
+    jt.userData.initPos   = jt.position.clone();
+    jt.userData.initScale = jt.scale.clone();
+  });
+}
+
+
+/* ============================================================
+   QUAD DRONE - separate model, 4 propeller arms + underbelly
+   scanner beam + front optic eye.
+   ============================================================ */
+let drone = null;
+
+function buildQuadDrone() {
+  // Realistic quadcopter - 4 diagonal arms, motors with propellers, front gimbal camera, landing skids.
+  const root = new THREE.Group();
+  root.position.set(0, 0.38, -4.8);
+  root.visible = false;
+  root.scale.setScalar(0.01);
+
+  drone = {
+    root,
+    propellers: [],
+    motorLeds: [],
+    frontEye: null,
+    underBeam: null,
+    beamRing: null,
+    arms: [],
+  };
+
+  function mShell()   { return new THREE.MeshStandardMaterial({ color: 0x16161a, metalness: 0.6, roughness: 0.45 }); }
+  function mPanel()   { return new THREE.MeshStandardMaterial({ color: 0x28282d, metalness: 0.65, roughness: 0.5 }); }
+  function mPlastic() { return new THREE.MeshStandardMaterial({ color: 0x0c0c0e, metalness: 0.2, roughness: 0.7 }); }
+  function mMotor()   { return new THREE.MeshStandardMaterial({ color: 0x44444a, metalness: 0.9, roughness: 0.32 }); }
+  function mLens()    { return new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.95, roughness: 0.05 }); }
+  function mGlow(op=0.95) { return new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: op }); }
+  function mHalo(op=0.4)  { return new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }); }
+  function mWhite(op=0.9) { return new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: op }); }
+
+  function add(parent, geo, mat, x=0, y=0, z=0, rx=0, ry=0, rz=0) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    parent.add(m);
+    return m;
+  }
+
+  // ============ CENTRAL BODY ============
+  const body = new THREE.Group();
+  root.add(body);
+
+  const HULL_W = 0.46;
+  const HULL_H = 0.1;
+  const HULL_L = 0.58;
+
+  // Main fuselage
+  add(body, new THREE.BoxGeometry(HULL_W, HULL_H, HULL_L), mShell());
+  // Top panel (slightly lighter, inset)
+  add(body, new THREE.BoxGeometry(HULL_W - 0.06, 0.024, HULL_L - 0.08), mPanel(), 0, HULL_H/2 + 0.008, 0);
+  // Bottom belly plate
+  add(body, new THREE.BoxGeometry(HULL_W - 0.04, 0.022, HULL_L - 0.1), mShell(), 0, -HULL_H/2 - 0.008, 0);
+  // Front beak (extends forward where camera mounts)
+  add(body, new THREE.BoxGeometry(HULL_W - 0.18, HULL_H * 0.85, 0.07), mShell(), 0, -0.005, HULL_L/2 + 0.028);
+  // Rear bumper bevel
+  add(body, new THREE.BoxGeometry(HULL_W - 0.12, HULL_H * 0.8, 0.04), mPanel(), 0, 0, -HULL_L/2 - 0.015);
+
+  // Top antenna (back-left corner)
+  add(body, new THREE.CylinderGeometry(0.006, 0.006, 0.09, 6), mPanel(), -0.13, HULL_H/2 + 0.065, -0.19);
+  add(body, new THREE.SphereGeometry(0.013, 8, 8), mGlow(0.85), -0.13, HULL_H/2 + 0.115, -0.19);
+
+  // Top status LEDs (red back, white front - convention)
+  add(body, new THREE.CylinderGeometry(0.008, 0.008, 0.004, 12), mGlow(0.95), 0, HULL_H/2 + 0.022, -0.14);
+  add(body, new THREE.CylinderGeometry(0.006, 0.006, 0.003, 12), mWhite(0.85), 0, HULL_H/2 + 0.022, 0.14);
+
+  // Side seam recess (thin grooves running the length of the body)
+  for (let s of [-1, 1]) {
+    add(body, new THREE.BoxGeometry(0.003, 0.022, HULL_L - 0.18), mPlastic(), s * (HULL_W/2 - 0.001), 0, 0);
+  }
+  // Side intake vents (3 small slats per side)
+  for (let s of [-1, 1]) {
+    for (let i = -1; i <= 1; i++) {
+      add(body, new THREE.BoxGeometry(0.005, 0.005, 0.038), mPlastic(), s * (HULL_W/2 + 0.002), 0.008, i * 0.07);
+    }
+  }
+  // Small product label panel (placeholder for "UNIT.HMM" branding)
+  add(body, new THREE.BoxGeometry(0.06, 0.002, 0.024), mWhite(0.65), 0.13, HULL_H/2 + 0.024, 0.16);
+
+  // ============ FRONT GIMBAL CAMERA ============
+  const gimbal = new THREE.Group();
+  gimbal.position.set(0, -HULL_H/2 - 0.005, HULL_L/2 + 0.05);
+  body.add(gimbal);
+  // Gimbal yoke arms (two thin brackets on either side of the camera)
+  for (let s of [-1, 1]) {
+    add(gimbal, new THREE.BoxGeometry(0.014, 0.05, 0.05), mPanel(), s * 0.046, 0.005, 0);
+  }
+  // Camera body sphere
+  add(gimbal, new THREE.SphereGeometry(0.036, 16, 12), mShell(), 0, 0, 0.012);
+  // Lens housing barrel
+  add(gimbal, new THREE.CylinderGeometry(0.023, 0.023, 0.022, 16), mLens(), 0, 0, 0.045, Math.PI/2, 0, 0);
+  // Lens glass (red emissive)
+  const lensGlass = add(gimbal, new THREE.SphereGeometry(0.019, 14, 14), mGlow(0.95), 0, 0, 0.05);
+  drone.frontEye = lensGlass;
+  // Halo around lens
+  const lensHalo = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 14), mHalo(0.45));
+  lensHalo.position.set(0, 0, 0.05);
+  gimbal.add(lensHalo);
+  // Gimbal motor pivot caps (sphere on each side of yoke)
+  for (let s of [-1, 1]) {
+    add(gimbal, new THREE.SphereGeometry(0.013, 8, 8), mMotor(), s * 0.04, 0, 0);
+  }
+
+  // ============ 4 ARMS + MOTORS + PROPELLERS (X-frame) ============
+  const ARM_LEN = 0.42;
+  // Each angle rotates the arm group so its local +X points to a corner:
+  //   i=0 FR: -PI/4    (front-right, +X +Z)
+  //   i=1 FL: -3*PI/4  (front-left,  -X +Z)
+  //   i=2 RL:  3*PI/4  (rear-left,   -X -Z)
+  //   i=3 RR:  PI/4    (rear-right,  +X -Z)
+  const armAngles = [-Math.PI/4, -3*Math.PI/4, 3*Math.PI/4, Math.PI/4];
+
+  armAngles.forEach((angle, i) => {
+    const armGroup = new THREE.Group();
+    armGroup.rotation.y = angle;
+    body.add(armGroup);
+    drone.arms.push(armGroup);
+
+    // Strut - slim tapered box along local +X
+    add(armGroup, new THREE.BoxGeometry(ARM_LEN - 0.05, 0.022, 0.034), mShell(), ARM_LEN/2 - 0.025, 0, 0);
+    // Reinforcement bracket near the body junction
+    add(armGroup, new THREE.BoxGeometry(0.07, 0.044, 0.054), mPanel(), 0.13, 0, 0);
+    // Thin red status LED strip running along the top of the arm
+    add(armGroup, new THREE.BoxGeometry(ARM_LEN - 0.12, 0.003, 0.005), mGlow(0.55), ARM_LEN/2 - 0.045, 0.014, 0);
+
+    // Motor housing at arm tip
+    add(armGroup, new THREE.CylinderGeometry(0.05, 0.052, 0.062, 16), mMotor(), ARM_LEN, 0.005, 0);
+    // Motor top cap
+    add(armGroup, new THREE.CylinderGeometry(0.04, 0.046, 0.018, 14), mPanel(), ARM_LEN, 0.045, 0);
+    // Motor base LED ring
+    const motorLed = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.005, 6, 18), mGlow(0.85));
+    motorLed.rotation.x = Math.PI/2;
+    motorLed.position.set(ARM_LEN, -0.028, 0);
+    armGroup.add(motorLed);
+    drone.motorLeds.push(motorLed);
+
+    // Navigation LED at the arm tip (white for front pair i=0,1 - red for rear pair i=2,3)
+    const isFront = (i <= 1);
+    add(armGroup, new THREE.SphereGeometry(0.013, 10, 10),
+        isFront ? mWhite(0.95) : mGlow(0.95),
+        ARM_LEN + 0.022, -0.005, 0);
+    // Halo for the nav LED
+    const navHalo = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 10),
+        new THREE.MeshBasicMaterial({
+          color: isFront ? 0xFFFFFF : 0xFF2D2D,
+          transparent: true, opacity: 0.35,
+          blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+    navHalo.position.set(ARM_LEN + 0.022, -0.005, 0);
+    armGroup.add(navHalo);
+
+    // Propeller group (spins around Y above the motor)
+    const prop = new THREE.Group();
+    prop.position.set(ARM_LEN, 0.06, 0);
+    armGroup.add(prop);
+    drone.propellers.push(prop);
+
+    // Prop hub (small disc)
+    add(prop, new THREE.CylinderGeometry(0.016, 0.016, 0.008, 12), mMotor());
+    // 2 blades (crossed, slight angle of attack so they read as "real" props)
+    const BL = 0.22;
+    const blade1 = new THREE.Mesh(new THREE.BoxGeometry(BL, 0.005, 0.022), mPlastic());
+    blade1.rotation.z = 0.09;
+    prop.add(blade1);
+    const blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.005, BL), mPlastic());
+    blade2.rotation.x = -0.09;
+    prop.add(blade2);
+    // Red blade tip dots (4 corners - visible when spinning slow)
+    add(prop, new THREE.BoxGeometry(0.024, 0.006, 0.024), mGlow(0.7),  BL/2 - 0.005, 0, 0);
+    add(prop, new THREE.BoxGeometry(0.024, 0.006, 0.024), mGlow(0.7), -BL/2 + 0.005, 0, 0);
+    add(prop, new THREE.BoxGeometry(0.024, 0.006, 0.024), mGlow(0.7), 0, 0,  BL/2 - 0.005);
+    add(prop, new THREE.BoxGeometry(0.024, 0.006, 0.024), mGlow(0.7), 0, 0, -BL/2 + 0.005);
+  });
+
+  // ============ LANDING SKIDS (2 parallel rails underneath) ============
+  for (let s of [-1, 1]) {
+    const skidGroup = new THREE.Group();
+    skidGroup.position.set(s * 0.14, -HULL_H/2 - 0.05, 0);
+    body.add(skidGroup);
+    // Horizontal rail
+    add(skidGroup, new THREE.BoxGeometry(0.04, 0.022, 0.4), mPlastic());
+    // Two vertical struts up to body
+    add(skidGroup, new THREE.BoxGeometry(0.026, 0.05, 0.026), mPlastic(), 0, 0.034, 0.14);
+    add(skidGroup, new THREE.BoxGeometry(0.026, 0.05, 0.026), mPlastic(), 0, 0.034, -0.14);
+    // Rubber feet (small black bumps at rail ends)
+    add(skidGroup, new THREE.SphereGeometry(0.018, 8, 8), mPlastic(), 0, -0.014, 0.19);
+    add(skidGroup, new THREE.SphereGeometry(0.018, 8, 8), mPlastic(), 0, -0.014, -0.19);
+  }
+
+  // ============ UNDERBELLY SCANNER BEAM (used during scan phase) ============
+  const beamGeo = new THREE.ConeGeometry(0.5, 0.6, 24, 1, true);
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0xFF2D2D, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false
+  });
+  const beam = new THREE.Mesh(beamGeo, beamMat);
+  beam.position.set(0, -0.45, 0);
+  beam.rotation.x = Math.PI;
+  root.add(beam);
+  drone.underBeam = beam;
+
+  // ============ HOVER UNDERGLOW RING (subtle red ring under drone) ============
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.35, 0.008, 6, 32),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0 })
+  );
+  ring.position.set(0, -0.18, 0);
+  ring.rotation.x = Math.PI/2;
+  root.add(ring);
+  drone.beamRing = ring;
+
+  scene.add(root);
+}
+
+
+/* ============================================================
+   TRANSFORMATION PARTICLES - red sparks emitted at phase transitions
+   ============================================================ */
+let transformParticles = null;
+
+function buildTransformParticles() {
+  const COUNT = 240;
+  const positions = new Float32Array(COUNT * 3);
+  const velocities = new Float32Array(COUNT * 3);
+  const lifetimes = new Float32Array(COUNT);
+  for (let i = 0; i < COUNT; i++) {
+    positions[i * 3] = 0;
+    positions[i * 3 + 1] = -1000;
+    positions[i * 3 + 2] = 0;
+    lifetimes[i] = -1;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xFF2D2D, size: 0.05, transparent: true, opacity: 0.95,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  transformParticles = { pts, positions, velocities, lifetimes, count: COUNT, nextIdx: 0 };
+}
+
+function emitTransformParticles(origin, count, speed = 2.5, spread = 1.0) {
+  if (!transformParticles) return;
+  const p = transformParticles;
+  for (let i = 0; i < count; i++) {
+    const idx = p.nextIdx;
+    p.nextIdx = (p.nextIdx + 1) % p.count;
+    p.positions[idx * 3]     = origin.x + (Math.random() - 0.5) * 0.3;
+    p.positions[idx * 3 + 1] = origin.y + (Math.random() - 0.5) * 0.3;
+    p.positions[idx * 3 + 2] = origin.z + (Math.random() - 0.5) * 0.3;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const s = speed * (0.5 + Math.random()) * spread;
+    p.velocities[idx * 3]     = Math.sin(phi) * Math.cos(theta) * s;
+    p.velocities[idx * 3 + 1] = Math.cos(phi) * s + 0.6;
+    p.velocities[idx * 3 + 2] = Math.sin(phi) * Math.sin(theta) * s;
+    p.lifetimes[idx] = 1.0;
+  }
+}
+
+function updateTransformParticles(dt) {
+  if (!transformParticles) return;
+  const p = transformParticles;
+  let any = false;
+  for (let i = 0; i < p.count; i++) {
+    if (p.lifetimes[i] <= 0) continue;
+    any = true;
+    p.lifetimes[i] -= dt * 1.3;
+    if (p.lifetimes[i] <= 0) {
+      p.positions[i * 3 + 1] = -1000;
+      continue;
+    }
+    p.positions[i * 3]     += p.velocities[i * 3] * dt;
+    p.positions[i * 3 + 1] += p.velocities[i * 3 + 1] * dt - dt * 1.2;
+    p.positions[i * 3 + 2] += p.velocities[i * 3 + 2] * dt;
+    p.velocities[i * 3]     *= 0.97;
+    p.velocities[i * 3 + 1] *= 0.97;
+    p.velocities[i * 3 + 2] *= 0.97;
+  }
+  if (any) p.pts.geometry.attributes.position.needsUpdate = true;
+}
+
+
+/* ============================================================
+   ROBOT FOLD POSE - joints fold inward to a compact shape.
+   Same function drives forward (t: 0→1) and reverse (1→0).
+   ============================================================ */
+/* ============================================================
+   ROBOT-TO-DRONE KEYFRAMES
+   The robot's own parts rotate into a quadcopter configuration:
+   - pelvis tilts forward 90° (body becomes horizontal)
+   - head counter-rotates 90° (visor stays facing camera → becomes drone gimbal)
+   - shoulders rotate -3π/4 / +3π/4 around Z (arms splay to FL / FR rotor positions)
+   - hips rotate -π/4 / +π/4 around Z (legs splay to RL / RR rotor positions)
+   - hand & foot propeller groups scale from 0 → 1 (extend from compartments)
+   No model swap - the drone IS the transformed robot.
+   ============================================================ */
+function ease(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+function applyRobotToDrone(t) {
+  const J = robot.joints;
+  t = Math.max(0, Math.min(1, t));
+
+  // Staged phase windows within t=[0..1] - each body part has its own animation slice
+  //   arms     0.00 - 0.30   shoulders unfold (front rotor arms)
+  //   elbows   0.12 - 0.42   forearms hinge - 2-segment arm look
+  //   legs     0.20 - 0.50   hips spread (rear rotor arms)
+  //   knees    0.32 - 0.60   lower legs hinge - 2-segment rear arms
+  //   tilt     0.40 - 0.80   pelvis +π/2 (body tips horizontal)
+  //   neck     0.45 - 0.85   neck counter-rotates -π/2 - keeps head UPRIGHT on top of the
+  //                          drone WITHOUT propagating to shoulders (siblings of neck)
+  //   props    0.78 - 1.00   propellers materialize
+  const phaseE = (start, end) => ease(Math.max(0, Math.min(1, (t - start) / (end - start))));
+  const eArms   = phaseE(0.00, 0.30);
+  const eElbows = phaseE(0.12, 0.42);
+  const eLegs   = phaseE(0.20, 0.50);
+  const eKnees  = phaseE(0.32, 0.60);
+  const eTilt   = phaseE(0.40, 0.80);
+  const eNeck   = phaseE(0.45, 0.85);
+  const eProps  = phaseE(0.78, 1.00);
+
+  function setRot(name, axis, target, e) {
+    const j = J[name]; if (!j) return;
+    const base = j.userData.initRot[axis];
+    j.rotation[axis] = base + (target - base) * e;
+  }
+  function setScale(name, target, e) {
+    const j = J[name]; if (!j) return;
+    const base = j.userData.initScale.x;
+    j.scale.setScalar(base + (target - base) * e);
+  }
+
+  // 1) Shoulders unfold - arms splay outward to form FL + FR rotor arms
+  setRot('leftShoulder',  'z', -3 * Math.PI / 4, eArms);
+  setRot('rightShoulder', 'z',  3 * Math.PI / 4, eArms);
+  // 2) Elbows hinge - forearm bends so each arm has a 2-segment articulated look
+  setRot('leftElbow',  'x', -Math.PI / 3, eElbows);
+  setRot('rightElbow', 'x', -Math.PI / 3, eElbows);
+  // 3) Hips spread - legs splay diagonally backward to form RL + RR rotor arms
+  setRot('leftHip',  'z', -Math.PI / 4, eLegs);
+  setRot('rightHip', 'z',  Math.PI / 4, eLegs);
+  // 4) Knees hinge - lower leg bends so each rear arm is also 2-segment
+  setRot('leftKnee',  'x', -Math.PI / 3, eKnees);
+  setRot('rightKnee', 'x', -Math.PI / 3, eKnees);
+  // 5) Body tips forward 90°
+  setRot('pelvis', 'x', Math.PI / 2, eTilt);
+  // 6) Neck counter-rotates -90° - undoes the pelvis tilt for the head only, so the helmet
+  //    ends up UPRIGHT and ON TOP of the drone body (sensor turret). This does NOT affect
+  //    the shoulders because they are siblings of the neck (both children of the torso),
+  //    so arms keep their proper horizontal splay.
+  setRot('neck', 'x', -Math.PI / 2, eNeck);
+  // 7) Propellers extend out of the hand & foot compartments
+  setScale('leftProp',      1.0, eProps);
+  setScale('rightProp',     1.0, eProps);
+  setScale('leftFootProp',  1.0, eProps);
+  setScale('rightFootProp', 1.0, eProps);
+}
+
+
+/* ============================================================
+   SCAN OVERLAY CONTROL
+   ============================================================ */
+const scanData = {
+  el: null, line: null, band: null,
+  dataEl: null, completeEl: null,
+  active: false,
+};
+
+function initScanOverlay() {
+  scanData.el = document.getElementById('scan-overlay');
+  scanData.line = document.getElementById('scan-line');
+  scanData.band = document.getElementById('scan-band');
+  scanData.dataEl = document.getElementById('scan-data');
+  scanData.completeEl = document.getElementById('scan-complete');
+}
+function rand16(n=8) {
+  let s = ''; const c = '0123456789ABCDEF';
+  for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * 16)];
+  return s;
+}
+function startScan() {
+  if (!scanData.el) initScanOverlay();
+  scanData.el.classList.add('active');
+  scanData.active = true;
+  scanData.line.style.top = '-3px';
+  scanData.band.style.top = '-140px';
+
+  // Telemetry stream
+  const lines = [];
+  for (let i = 0; i < 14; i++) {
+    const r = Math.random();
+    const cls = r < 0.15 ? 'verify' : r < 0.23 ? 'warn' : '';
+    lines.push(`<div class="${cls}">0x${rand16(4)} · ${rand16(8)}</div>`);
+  }
+  scanData.dataEl.innerHTML = lines.join('');
+}
+function updateScan(p) {
+  if (!scanData.active) return;
+  const h = window.innerHeight;
+  const y = p * (h + 100) - 50;
+
+  // Horizontal sweep (line + band)
+  scanData.line.style.top = y + 'px';
+  scanData.band.style.top = (y - 100) + 'px';
+
+  // Telemetry churn
+  if (Math.random() < 0.12) {
+    const idx = Math.floor(Math.random() * 14);
+    const div = scanData.dataEl.children[idx];
+    if (div) {
+      div.innerHTML = `0x${rand16(4)} · ${rand16(8)}`;
+      const r = Math.random();
+      div.className = r < 0.18 ? 'verify' : r < 0.27 ? 'warn' : r < 0.4 ? 'glitch' : '';
+    }
+  }
+}
+function endScan() {
+  if (!scanData.active) return;
+  scanData.completeEl.classList.add('show');
+  setTimeout(() => {
+    scanData.el.classList.remove('active');
+    scanData.completeEl.classList.remove('show');
+    scanData.active = false;
+  }, 700);
+}
+
+
+/* ============================================================
+   STATE MACHINE
+   Phases: idle → zoomIn → fold → swap → expand → scan →
+           contract → swap2 → unfold → zoomOut → idle
+   ============================================================ */
+const transformState = {
+  mode: 'idle',
+  phaseStart: 0,
+  durations: {
+    zoomIn:      1000,
+    transform:   3000,   // slow morph - robot parts physically rearrange
+    hover:       7700,   // flips + roll + yaw spin + scan
+    untransform: 3000,   // slow reverse
+    zoomOut:     1000,
+  },
+  camFrom: { pos: new THREE.Vector3(0, 1.5, 5.6), look: new THREE.Vector3(0, 0.6, 0),    fov: 42 },
+  camTo:   { pos: new THREE.Vector3(0, 0.9, 1.0), look: new THREE.Vector3(0, 0.55, -4.8), fov: 38 },
+  camProgress: 0,
+  fgFade: 1,
+  propSpin: 0,
+  flashOpacity: 0,
+  scanStarted: false,
+};
+
+function setForegroundVisibility(v) {
+  transformState.fgFade = v;
+  if (arm && arm.root) arm.root.visible = v > 0.05;
+  cards3D.forEach(c => {
+    if (c.mesh && c.mesh.material) c.mesh.material.opacity = v;
+    if (c.backdrop && c.backdrop.material) {
+      const baseBack = c.hovered ? 0.25 : 0;
+      c.backdrop.material.opacity = baseBack * v;
+    }
+  });
+  if (platformGrp) platformGrp.visible = v > 0.05;
+  props.forEach(p => {
+    if (p.mesh) p.mesh.visible = v > 0.05;
+    if (p.ring) p.ring.visible = v > 0.05;
+  });
+  if (targetZone && targetZone.group) targetZone.group.visible = v > 0.05;
+}
+
+function triggerTransform() {
+  if (!armReady) return;
+  if (transformState.mode !== 'idle') return;
+  if (drag.active || heldProp || demo.active) return;
+
+  transformState.mode = 'zoomIn';
+  transformState.phaseStart = performance.now();
+  transformState.scanStarted = false;
+  armState = 'transform';
+  if (audio.enabled) audio.chime();
+  document.getElementById('transform-btn').classList.add('on');
+}
+
+function updateTransform(now, dt) {
+  if (transformState.mode === 'idle') return;
+  const ts = transformState;
+  const elapsed = now - ts.phaseStart;
+  const d = ts.durations;
+  const origin = new THREE.Vector3(0, 0.6, -4.8);  // robot chest area
+
+  // Camera lerp
+  const camTarget = (ts.mode !== 'zoomOut') ? 1 : 0;
+  ts.camProgress += (camTarget - ts.camProgress) * 0.06;
+  const cp = ts.camProgress;
+  camera.position.lerpVectors(ts.camFrom.pos, ts.camTo.pos, cp);
+  const lk = new THREE.Vector3().lerpVectors(ts.camFrom.look, ts.camTo.look, cp);
+  camera.lookAt(lk);
+  camera.fov = ts.camFrom.fov + (ts.camTo.fov - ts.camFrom.fov) * cp;
+  camera.updateProjectionMatrix();
+
+  // Foreground fade
+  const fgTarget = (ts.mode === 'zoomOut' && ts.camProgress < 0.5) ? 1
+                : (ts.mode === 'idle') ? 1 : 0;
+  setForegroundVisibility(ts.fgFade + (fgTarget - ts.fgFade) * 0.07);
+
+  // Flash decay
+  ts.flashOpacity *= 0.85;
+  document.getElementById('flash').style.opacity = ts.flashOpacity;
+
+  switch (ts.mode) {
+    case 'zoomIn': {
+      if (elapsed >= d.zoomIn) {
+        ts.mode = 'transform';
+        ts.phaseStart = now;
+        emitTransformParticles(origin, 16, 2.2);
+        if (audio.enabled) audio.servo();
+      }
+      break;
+    }
+    case 'transform': {
+      // Robot parts physically rotate into drone configuration - slow & visible
+      const p = Math.min(1, elapsed / d.transform);
+      applyRobotToDrone(p);
+      // Particle sparks from joints articulating - heavier emission for drama
+      if (Math.random() < 0.6) emitTransformParticles(origin, 3, 1.8);
+      // Flash beats at each major stage transition (arms, legs, tilt, props locking)
+      const beats = [0.12, 0.32, 0.55, 0.80];
+      for (const b of beats) {
+        if (elapsed > d.transform * b && elapsed < d.transform * (b + 0.03)) {
+          ts.flashOpacity = Math.max(ts.flashOpacity, 0.22);
+          if (audio.enabled && !ts._beatFired?.[b]) {
+            audio.click();
+            ts._beatFired = ts._beatFired || {};
+            ts._beatFired[b] = true;
+          }
+        }
+      }
+      if (p >= 1) {
+        ts._beatFired = null;
+        ts.mode = 'hover';
+        ts.phaseStart = now;
+        if (audio.enabled) audio.chime();
+      }
+      break;
+    }
+    case 'hover': {
+      // Sub-phases:
+      //   0    - 1200ms  forward flip (pitch full rotation)
+      //   1200 - 1500ms  pause
+      //   1500 - 2700ms  side barrel roll (roll full rotation)
+      //   2700 - 3000ms  pause
+      //   3000 - 4200ms  yaw spin (drone rotates around its vertical axis in place)
+      //   4200 - 4500ms  pause
+      //   4500 - 7700ms  scan + hover bob
+      const p = Math.min(1, elapsed / d.hover);
+      const tw = elapsed / 1000;
+      applyRobotToDrone(1);
+
+      const forwardFlipEnd = 1200;
+      const flipPauseEnd   = 1500;
+      const sideRollEnd    = 2700;
+      const rollPauseEnd   = 3000;
+      const yawSpinEnd     = 4200;
+      const spinPauseEnd   = 4500;
+
+      let flipPitch = 0;
+      let flipRoll  = 0;
+      let yawSpin   = 0;
+
+      if (elapsed < forwardFlipEnd) {
+        flipPitch = ease(elapsed / forwardFlipEnd) * 2 * Math.PI;
+      } else if (elapsed < flipPauseEnd) {
+        flipPitch = 2 * Math.PI;
+      } else if (elapsed < sideRollEnd) {
+        flipPitch = 2 * Math.PI;
+        const t = (elapsed - flipPauseEnd) / (sideRollEnd - flipPauseEnd);
+        flipRoll = ease(t) * 2 * Math.PI;
+      } else if (elapsed < rollPauseEnd) {
+        flipPitch = 2 * Math.PI;
+        flipRoll  = 2 * Math.PI;
+      } else if (elapsed < yawSpinEnd) {
+        flipPitch = 2 * Math.PI;
+        flipRoll  = 2 * Math.PI;
+        const t = (elapsed - rollPauseEnd) / (yawSpinEnd - rollPauseEnd);
+        yawSpin = ease(t) * 2 * Math.PI;
+      } else if (elapsed < spinPauseEnd) {
+        flipPitch = 2 * Math.PI;
+        flipRoll  = 2 * Math.PI;
+        yawSpin   = 2 * Math.PI;
+      } else {
+        flipPitch = 2 * Math.PI;
+        flipRoll  = 2 * Math.PI;
+        yawSpin   = 2 * Math.PI;
+        if (!ts.scanStarted) { startScan(); ts.scanStarted = true; }
+        const scanT = (elapsed - spinPauseEnd) / (d.hover - spinPauseEnd);
+        updateScan(scanT);
+      }
+
+      // Overlay flip/roll/yaw rotations on pelvis
+      robot.joints.pelvis.rotation.x = Math.PI / 2 + flipPitch;
+      robot.joints.pelvis.rotation.y = flipRoll;
+      robot.joints.pelvis.rotation.z = yawSpin;
+
+      // Hover bob only during scan portion (drone is finished maneuvering)
+      if (elapsed >= spinPauseEnd) {
+        robot.root.position.y = robot.bobBase + Math.sin(tw * 2) * 0.08;
+        robot.root.rotation.y = Math.sin(tw * 0.6) * 0.08;
+      } else {
+        robot.root.position.y = robot.bobBase;
+        robot.root.rotation.y = 0;
+      }
+
+      // Propellers spin throughout (diagonally opposite pairs same direction)
+      ts.propSpin += dt * 40;
+      const bladeKeys = ['leftBlades', 'rightBlades', 'leftFootBlades', 'rightFootBlades'];
+      bladeKeys.forEach((k, i) => {
+        const b = robot.joints[k];
+        if (b) {
+          const dir = (i === 0 || i === 3) ? 1 : -1;
+          b.rotation.y = ts.propSpin * dir * 1.5;
+        }
+      });
+
+      if (p >= 1) {
+        endScan();
+        ts.scanStarted = false;
+        // Reset all overlay rotations so untransform starts from a clean drone-form pose
+        robot.joints.pelvis.rotation.y = 0;
+        robot.joints.pelvis.rotation.z = 0;
+        ts.mode = 'untransform';
+        ts.phaseStart = now;
+        robot.root.position.y = robot.bobBase;
+        robot.root.rotation.y = 0;
+        if (audio.enabled) audio.servo();
+      }
+      break;
+    }
+    case 'untransform': {
+      // Reverse: drone parts fold back into robot
+      const p = Math.min(1, elapsed / d.untransform);
+      applyRobotToDrone(1 - p);
+      if (Math.random() < 0.25) emitTransformParticles(origin, 2, 1.3);
+      if (p >= 1) {
+        applyRobotToDrone(0);  // snap to identity to clear any drift
+        ts.mode = 'zoomOut';
+        ts.phaseStart = now;
+      }
+      break;
+    }
+    case 'zoomOut': {
+      if (elapsed >= d.zoomOut && ts.camProgress < 0.05) {
+        ts.mode = 'idle';
+        ts.fgFade = 1;
+        setForegroundVisibility(1);
+        armState = 'tracking';
+        document.getElementById('transform-btn').classList.remove('on');
+      }
+      break;
+    }
+  }
+}
+
+function drawCardCanvas(ctx, W, H, data, hovered) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = hovered ? 'rgba(22, 14, 14, 0.96)' : 'rgba(15, 15, 17, 0.95)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Border - rounded to match the geometry corners
+  ctx.strokeStyle = hovered ? 'rgba(255, 45, 45, 0.55)' : 'rgba(245, 230, 211, 0.10)';
+  ctx.lineWidth = 2;
+  const br = 27;  // pixel radius matching the geometry rounding
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(1, 1, W - 2, H - 2, br);
+  } else {
+    const x = 1, y = 1, w = W - 2, h = H - 2;
+    ctx.moveTo(x + br, y);
+    ctx.lineTo(x + w - br, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + br);
+    ctx.lineTo(x + w, y + h - br);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    ctx.lineTo(x + br, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - br);
+    ctx.lineTo(x, y + br);
+    ctx.quadraticCurveTo(x, y, x + br, y);
+  }
+  ctx.stroke();
+
+  // Left red accent bar
+  ctx.fillStyle = '#FF2D2D';
+  ctx.fillRect(0, 0, hovered ? 8 : 4, H);
+
+  // Tag (top-left)
+  ctx.fillStyle = '#FF2D2D';
+  ctx.font = '600 22px "JetBrains Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(data.tag, 36, 50);
+
+  // Number (top-right)
+  ctx.fillStyle = '#4A4A4D';
+  ctx.font = '600 22px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(data.num, W - 32, 50);
+
+  // Title - two lines (white then red)
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#F5E6D3';
+  ctx.font = '500 56px "Space Grotesk", sans-serif';
+  ctx.fillText(data.title, 36, 130);
+  ctx.fillStyle = '#FF2D2D';
+  ctx.fillText(data.subtitle, 36, 195);
+
+  // Snippet (wrapped)
+  ctx.fillStyle = '#8A8A8A';
+  ctx.font = '24px "Inter", sans-serif';
+  wrapText(ctx, data.snippet, 36, 250, W - 70, 32);
+
+  // CTA at bottom-left
+  ctx.fillStyle = hovered ? '#FF2D2D' : '#F5E6D3';
+  ctx.font = '600 18px "JetBrains Mono", monospace';
+  ctx.fillText('OPEN →', 36, H - 32);
+
+  // Right meta - section id
+  ctx.fillStyle = '#4A4A4D';
+  ctx.textAlign = 'right';
+  ctx.font = '600 16px "JetBrains Mono", monospace';
+  ctx.fillText(data.id.toUpperCase(), W - 32, H - 32);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const testWidth = ctx.measureText(testLine).width;
+    if (testWidth > maxWidth && n > 0) {
+      ctx.fillText(line, x, y);
+      line = words[n] + ' ';
+      y += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, x, y);
+}
+
+// Rounded rectangle geometry helper - for floating cards
+function roundedRectGeometry(w, h, r) {
+  const shape = new THREE.Shape();
+  const x = -w / 2, y = -h / 2;
+  shape.moveTo(x + r, y);
+  shape.lineTo(x + w - r, y);
+  shape.quadraticCurveTo(x + w, y, x + w, y + r);
+  shape.lineTo(x + w, y + h - r);
+  shape.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  shape.lineTo(x + r, y + h);
+  shape.quadraticCurveTo(x, y + h, x, y + h - r);
+  shape.lineTo(x, y + r);
+  shape.quadraticCurveTo(x, y, x + r, y);
+  const geo = new THREE.ShapeGeometry(shape, 12);
+  // Re-map UVs so the texture spans the full bounding box (0..1)
+  const uv = geo.attributes.uv;
+  const pos = geo.attributes.position;
+  for (let i = 0; i < uv.count; i++) {
+    const px = pos.getX(i), py = pos.getY(i);
+    uv.setXY(i, (px + w / 2) / w, (py + h / 2) / h);
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+function buildCards3D() {
+  CARD_DATA.forEach(data => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 700; canvas.height = 460;
+    const ctx = canvas.getContext('2d');
+    drawCardCanvas(ctx, canvas.width, canvas.height, data, false);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 8;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+
+    const aspect = 700 / 460;
+    const cardH = 1.0;
+    const cardW = cardH * aspect;
+
+    const group = new THREE.Group();
+    group.position.set(...data.position);
+
+    // Backdrop glow (for hover) - rounded
+    const backdrop = new THREE.Mesh(
+      roundedRectGeometry(cardW + 0.15, cardH + 0.15, 0.09),
+      new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0 })
+    );
+    backdrop.position.z = -0.01;
+    group.add(backdrop);
+
+    // Main card - rounded
+    const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(roundedRectGeometry(cardW, cardH, 0.06), mat);
+    group.add(mesh);
+
+    scene.add(group);
+    cards3D.push({ group, mesh, backdrop, canvas, ctx, texture, data, hovered: false, scale: 1 });
+  });
+}
+
+function updateCardTexture(card) {
+  drawCardCanvas(card.ctx, card.canvas.width, card.canvas.height, card.data, card.hovered);
+  card.texture.needsUpdate = true;
+}
+
+/* ============================================================
+   WORK PLATFORM - visible table for the props to sit on
+   ============================================================ */
+// ── CUSTOMIZATION: Platform position & size. The props rest on top of this. ──
+const PLATFORM = {
+  centerX: -0.7, centerZ: 1.5,           // platform center
+  width: 2.6, depth: 1.0, thickness: 0.05,
+  baseY: -0.5,                            // platform sits with top at baseY + thickness/2
+};
+PLATFORM.topY = PLATFORM.baseY + PLATFORM.thickness / 2;
+PLATFORM.x1 = PLATFORM.centerX - PLATFORM.width / 2;
+PLATFORM.x2 = PLATFORM.centerX + PLATFORM.width / 2;
+PLATFORM.z1 = PLATFORM.centerZ - PLATFORM.depth / 2;
+PLATFORM.z2 = PLATFORM.centerZ + PLATFORM.depth / 2;
+
+function buildPlatform() {
+  const grp = new THREE.Group();
+  grp.position.set(PLATFORM.centerX, PLATFORM.baseY, PLATFORM.centerZ);
+
+  // Tabletop
+  const topMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1d, metalness: 0.7, roughness: 0.4 });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(PLATFORM.width, PLATFORM.thickness, PLATFORM.depth), topMat);
+  grp.add(top);
+
+  // Red front edge accent (dimmed so it doesn't dominate the foreground)
+  const accent = new THREE.Mesh(
+    new THREE.BoxGeometry(PLATFORM.width, 0.005, 0.008),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.45 })
+  );
+  accent.position.set(0, PLATFORM.thickness / 2, PLATFORM.depth / 2 + 0.003);
+  grp.add(accent);
+
+  // Four legs
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x0e0e10, metalness: 0.3, roughness: 0.9 });
+  const legH = PLATFORM.baseY - (-1.0);  // distance from platform base to floor
+  for (let lx of [-1, 1]) for (let lz of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, legH, 0.05), legMat);
+    leg.position.set(lx * (PLATFORM.width / 2 - 0.08), -legH / 2, lz * (PLATFORM.depth / 2 - 0.08));
+    grp.add(leg);
+  }
+
+  // Subtle panel-line groove across the top
+  const groove = new THREE.Mesh(
+    new THREE.BoxGeometry(PLATFORM.width - 0.2, 0.001, 0.008),
+    new THREE.MeshBasicMaterial({ color: 0x2a2a2d })
+  );
+  groove.position.set(0, PLATFORM.thickness / 2 + 0.001, 0);
+  grp.add(groove);
+
+  // Small ID tag at the corner
+  const tagCanvas = document.createElement('canvas');
+  tagCanvas.width = 256; tagCanvas.height = 64;
+  const tctx = tagCanvas.getContext('2d');
+  tctx.fillStyle = '#FF2D2D';
+  tctx.font = '600 22px "JetBrains Mono", monospace';
+  tctx.fillText('WORKSPACE.01', 8, 30);
+  tctx.fillStyle = '#8A8A8A';
+  tctx.font = '14px "JetBrains Mono", monospace';
+  tctx.fillText('PICK ZONE · 3 OBJECTS', 8, 52);
+  const tagTex = new THREE.CanvasTexture(tagCanvas);
+  const tag = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.45, 0.11),
+    new THREE.MeshBasicMaterial({ map: tagTex, transparent: true })
+  );
+  tag.position.set(PLATFORM.width / 2 - 0.3, PLATFORM.thickness / 2 + 0.002, PLATFORM.depth / 2 - 0.08);
+  tag.rotation.x = -Math.PI / 2;
+  grp.add(tag);
+
+  scene.add(grp);
+  platformGrp = grp;
+}
+
+function isOnPlatform(x, z) {
+  return x > PLATFORM.x1 && x < PLATFORM.x2 && z > PLATFORM.z1 && z < PLATFORM.z2;
+}
+function getPropRestY(prop) {
+  return isOnPlatform(prop.mesh.position.x, prop.mesh.position.z) ? prop.platformY : prop.floorY;
+}
+
+/* ============================================================
+   PROPS - manipulable objects, sitting on the work platform
+   ============================================================ */
+function buildProps() {
+  // ── CUSTOMIZATION: edit positions, colors, shapes, sizes here ──
+  const propDefs = [
+    { type: 'box',     size: [0.16, 0.16, 0.16], halfH: 0.08, pos: [-1.5, 1.3], color: 0xC71F1F, emissive: 0xFF2D2D, ei: 0.18, label: 'BOX' },
+    { type: 'sphere',  size: [0.11],             halfH: 0.11, pos: [-0.2, 1.5], color: 0xF5E6D3, emissive: 0xF5E6D3, ei: 0.06, label: 'SPHERE' },
+    { type: 'cylinder',size: [0.08, 0.08, 0.2],  halfH: 0.10, pos: [-0.9, 1.8], color: 0x9A9AA0, emissive: 0x000000, ei: 0,    label: 'BOLT' }
+  ];
+  propDefs.forEach((def) => {
+    let geo;
+    if (def.type === 'box') geo = new THREE.BoxGeometry(...def.size);
+    else if (def.type === 'sphere') geo = new THREE.SphereGeometry(def.size[0], 20, 20);
+    else geo = new THREE.CylinderGeometry(def.size[0], def.size[1], def.size[2], 20);
+
+    const isCylinder = def.type === 'cylinder';
+    const mat = new THREE.MeshStandardMaterial({
+      color: def.color,
+      metalness: isCylinder ? 0.92 : 0.6,
+      roughness: isCylinder ? 0.22 : 0.4,
+      emissive: def.emissive, emissiveIntensity: def.ei
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    const platformY = PLATFORM.topY + def.halfH;
+    const floorY    = -1.0 + def.halfH;
+    mesh.position.set(def.pos[0], platformY, def.pos[1]);
+    scene.add(mesh);
+
+    // Glow ring on the PLATFORM beneath each prop (was on floor - now visible)
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.15, 0.18, 28),
+      new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(def.pos[0], PLATFORM.topY + 0.002, def.pos[1]);
+    scene.add(ring);
+
+    props.push({
+      mesh, ring,
+      type: def.type,
+      grabbed: false,
+      velY: 0,
+      platformY, floorY,
+      halfH: def.halfH,
+      originalPos: new THREE.Vector3(def.pos[0], platformY, def.pos[1]),
+      label: def.label
+    });
+  });
+}
+
+function buildTargetZone() {
+  const tz = new THREE.Group();
+  const outerRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.28, 0.32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+  );
+  outerRing.rotation.x = -Math.PI/2;
+  tz.add(outerRing);
+  const innerRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.21, 32),
+    new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+  );
+  innerRing.rotation.x = -Math.PI/2;
+  tz.add(innerRing);
+  // X marker
+  for (let r = 0; r < 2; r++) {
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.005, 0.02),
+      new THREE.MeshBasicMaterial({ color: 0xFF2D2D, transparent: true, opacity: 0.5 })
+    );
+    bar.rotation.y = r * Math.PI / 2;
+    tz.add(bar);
+  }
+  tz.position.set(1.4, -0.99, 0.6);
+  scene.add(tz);
+  targetZone = { group: tz, outerRing, innerRing, pulseT: 0 };
+}
+
+/* ============================================================
+   POINTER HANDLERS
+   ============================================================ */
+function onPointerMove(e) {
+  mouse.x = e.clientX; mouse.y = e.clientY;
+  mouse.ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  idleTime = 0;
+
+  const ret = document.getElementById('reticle');
+  ret.style.left = e.clientX + 'px';
+  ret.style.top = e.clientY + 'px';
+  if (!ret.classList.contains('visible')) ret.classList.add('visible');
+
+  if (camera) {
+    raycaster.setFromCamera(mouse.ndc, camera);
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -TIP_PLANE_Z);
+    const hit = new THREE.Vector3();
+    if (raycaster.ray.intersectPlane(plane, hit)) mouse.target3D.copy(hit);
+  }
+
+  if (drag.active) {
+    raycaster.setFromCamera(mouse.ndc, camera);
+    const hit = new THREE.Vector3();
+    if (raycaster.ray.intersectPlane(drag.plane, hit)) drag.targetWorld.copy(hit);
+  }
+
+  // Card hover detection
+  if (armState !== 'demo' && cards3D.length) {
+    raycaster.setFromCamera(mouse.ndc, camera);
+    const meshes = cards3D.map(c => c.mesh);
+    const hits = raycaster.intersectObjects(meshes, false);
+    const newHover = hits.length > 0 ? cards3D.find(c => c.mesh === hits[0].object) : null;
+    if (newHover !== hoveredCard) {
+      if (hoveredCard) { hoveredCard.hovered = false; updateCardTexture(hoveredCard); gsap.to(hoveredCard.backdrop.material, { opacity: 0, duration: 0.3 }); gsap.to(hoveredCard.group.scale, { x: 1, y: 1, z: 1, duration: 0.3 }); }
+      if (newHover) { newHover.hovered = true; updateCardTexture(newHover); gsap.to(newHover.backdrop.material, { opacity: 0.25, duration: 0.3 }); gsap.to(newHover.group.scale, { x: 1.04, y: 1.04, z: 1.04, duration: 0.3 }); }
+      hoveredCard = newHover;
+    }
+  }
+
+  // Interactivity hover classes
+  let overInteractive = false;
+  if (hoveredCard) overInteractive = true;
+  if (armState !== 'demo' && !drag.active && !heldProp) {
+    raycaster.setFromCamera(mouse.ndc, camera);
+    const propMeshes = props.map(p => p.mesh);
+    if (raycaster.intersectObjects(propMeshes, false).length > 0) overInteractive = true;
+  }
+  document.body.classList.toggle('over-interactive', overInteractive);
+}
+
+function onPointerDown(e) {
+  if (e.button !== 0) return;
+  if (armState === 'demo') return;
+  raycaster.setFromCamera(mouse.ndc, camera);
+
+  // Priority 1: held prop click = drop it (in case user clicked away from arm)
+  // (Handled via pointerup below since this is mousedown)
+
+  // Priority 2: card hits
+  const cardMeshes = cards3D.map(c => c.mesh);
+  const cardHits = raycaster.intersectObjects(cardMeshes, false);
+  if (cardHits.length > 0) {
+    e.preventDefault();
+    const card = cards3D.find(c => c.mesh === cardHits[0].object);
+    // pulse the card
+    gsap.fromTo(card.backdrop.material, { opacity: 0.6 }, { opacity: 0.25, duration: 0.4 });
+    openSection(card.data.id);
+    return;
+  }
+
+  // Priority 3: prop hits (pickup)
+  if (!heldProp) {
+    const propMeshes = props.map(p => p.mesh);
+    const propHits = raycaster.intersectObjects(propMeshes, false);
+    if (propHits.length > 0) {
+      e.preventDefault();
+      const prop = props.find(p => p.mesh === propHits[0].object);
+      heldProp = prop;
+      prop.grabbed = true;
+      prop.velY = 0;
+      armState = 'holding';
+      arm.gripperTarget = 0.15; // close
+      document.body.classList.add('grabbing-prop');
+      if (audio.enabled) audio.clunk();
+      hideInteractionHint();
+      return;
+    }
+  }
+
+  // Priority 4: arm joint drag
+  const meshes = arm.grabbable.map(g => g.mesh);
+  const hits = raycaster.intersectObjects(meshes, false);
+  if (hits.length === 0) return;
+  e.preventDefault();
+  const hit = hits[0];
+  const entry = arm.grabbable.find(g => g.mesh === hit.object);
+  drag.active = true;
+  drag.joint = entry.jointIdx;
+  drag.targetWorld.copy(hit.point);
+  const planeNormal = new THREE.Vector3();
+  camera.getWorldDirection(planeNormal);
+  planeNormal.negate();
+  drag.plane.setFromNormalAndCoplanarPoint(planeNormal, hit.point);
+  armState = 'dragging';
+  document.getElementById('scene').classList.add('grabbing');
+  if (audio.enabled) audio.click();
+  hideInteractionHint();
+}
+
+function onPointerUp() {
+  if (heldProp) {
+    // Release held prop
+    const prop = heldProp;
+    prop.grabbed = false;
+    prop.velY = 0;
+    heldProp = null;
+    arm.gripperTarget = 1.0; // open
+    armState = 'tracking';
+    document.body.classList.remove('grabbing-prop');
+    if (audio.enabled) audio.release();
+    // Check if dropped near target zone
+    const dx = prop.mesh.position.x - targetZone.group.position.x;
+    const dz = prop.mesh.position.z - targetZone.group.position.z;
+    const distXZ = Math.hypot(dx, dz);
+    if (distXZ < 0.35) {
+      // Hit target zone - pulse + chime
+      targetZone.pulseT = 1.0;
+      if (audio.enabled) setTimeout(() => audio.chime(), 250);
+    }
+    return;
+  }
+  if (drag.active) {
+    drag.active = false;
+    drag.joint = -1;
+    armState = 'tracking';
+    document.getElementById('scene').classList.remove('grabbing');
+    if (audio.enabled) audio.click();
+  }
+}
+
+function onResize() {
+  if (!camera || !renderer) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  if (composer) composer.setSize(w, h);
+  if (bloomPass) bloomPass.setSize(w, h);
+  if (fxaaPass) {
+    const pr = renderer.getPixelRatio();
+    fxaaPass.material.uniforms.resolution.value.x = 1 / (w * pr);
+    fxaaPass.material.uniforms.resolution.value.y = 1 / (h * pr);
+  }
+}
+
+function hideInteractionHint() { const el = document.getElementById('interaction-hint'); if (el) el.classList.remove('visible'); }
+
+/* ============================================================
+   EASTER EGGS
+   ============================================================ */
+const konami = { code: ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'], pos: 0 };
+
+function onKeyDown(e) {
+  if (e.key === 'Escape') { closeModal(); return; }
+
+  // Space = wave
+  if (e.code === 'Space' && armState === 'tracking' && armReady) {
+    triggerEasterWave();
+    e.preventDefault();
+    return;
+  }
+
+  // Konami
+  const expected = konami.code[konami.pos];
+  if (e.key === expected || e.key.toLowerCase() === expected) {
+    konami.pos++;
+    if (konami.pos >= konami.code.length) {
+      toggleDisco();
+      konami.pos = 0;
+    }
+  } else {
+    konami.pos = (e.key === konami.code[0] || e.key.toLowerCase() === konami.code[0]) ? 1 : 0;
+  }
+}
+
+function triggerEasterWave() {
+  armState = 'easter';
+  const waveT0 = clock.elapsedTime;
+  const duration = 1.6;
+  // Move shoulder/elbow into wave position, then oscillate wrist
+  const originalTargets = arm.joints.map(j => j.target);
+  arm.joints[0].target = 0;
+  arm.joints[1].target = 1.0;
+  arm.joints[2].target = -0.6;
+  arm.joints[3].target = -0.7;
+  const wave = () => {
+    const t = clock.elapsedTime - waveT0;
+    if (t > duration) {
+      armState = 'tracking';
+      return;
+    }
+    arm.joints[4].target = Math.sin(t * 8) * 0.7;
+    requestAnimationFrame(wave);
+  };
+  wave();
+  if (audio.enabled) audio.click();
+}
+
+function toggleDisco() {
+  disco.active = !disco.active;
+  const overlay = document.getElementById('disco-overlay');
+  if (disco.active) {
+    overlay.classList.add('visible');
+    if (audio.enabled) audio.chime();
+  } else {
+    overlay.classList.remove('visible');
+    // Reset rim light
+    if (arm.rimLight) arm.rimLight.intensity = 1.8;
+    if (arm.tip) arm.tip.material.color.setHex(0xFF2D2D);
+    if (arm.tipHalo) arm.tipHalo.material.color.setHex(0xFF2D2D);
+  }
+}
+
+/* ============================================================
+   DEMO MODE
+   ============================================================ */
+function toggleDemo() {
+  if (!armReady) return;
+  if (demo.active) {
+    stopDemo();
+  } else {
+    startDemo();
+  }
+}
+
+function startDemo() {
+  if (heldProp) {
+    // release first
+    heldProp.grabbed = false;
+    heldProp = null;
+    arm.gripperTarget = 1.0;
+    document.body.classList.remove('grabbing-prop');
+  }
+  // Reset the cube back to original position for clean demo
+  props[0].mesh.position.copy(props[0].originalPos);
+  props[0].velY = 0;
+  props[0].grabbed = false;
+
+  // Capture the arm's CURRENT tip position so the demo starts from where the
+  // arm physically is - not a hardcoded (0,1,1) that the arm has to teleport
+  // to mid-INITIALIZING (which is what made the arm look stuck vertical).
+  const tipWorld = new THREE.Vector3();
+  arm.tip.getWorldPosition(tipWorld);
+  demo.currentIK.copy(tipWorld);
+
+  demo.active = true;
+  demo.step = 0;
+  demo.stepStart = performance.now();
+  armState = 'demo';
+  document.getElementById('demo-status').classList.add('active');
+  const btn = document.getElementById('demo-btn');
+  btn.classList.add('on');
+  btn.innerHTML = '<span class="icon">■</span><span>Stop Demo</span>';
+  if (audio.enabled) audio.chime();
+}
+
+function stopDemo() {
+  demo.active = false;
+  armState = 'tracking';
+  arm.gripperTarget = 1.0;
+  if (heldProp) {
+    heldProp.grabbed = false;
+    heldProp = null;
+  }
+  document.getElementById('demo-status').classList.remove('active');
+  const btn = document.getElementById('demo-btn');
+  btn.classList.remove('on');
+  btn.innerHTML = '<span class="icon">▶</span><span>Run Demo</span>';
+}
+
+function updateDemo(now) {
+  if (!demo.active) return;
+  const step = DEMO_SEQUENCE[demo.step];
+  const elapsed = now - demo.stepStart;
+  const t = Math.min(1, elapsed / step.duration);
+
+  // Update demo status UI
+  document.getElementById('demo-step-label').textContent = step.label;
+  document.getElementById('demo-step-num').textContent = `STEP ${demo.step + 1} / ${DEMO_SEQUENCE.length}`;
+  const totalDur = DEMO_SEQUENCE.reduce((s, st) => s + st.duration, 0);
+  const elapsedTotal = DEMO_SEQUENCE.slice(0, demo.step).reduce((s, st) => s + st.duration, 0) + elapsed;
+  document.querySelector('.demo-status').style.setProperty('--prog', (elapsedTotal / totalDur * 100) + '%');
+
+  if (step.kind === 'move' || step.kind === 'grip') {
+    if (step.target) {
+      const easeT = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2; // easeInOutQuad
+      const targetVec = new THREE.Vector3(...step.target);
+      demo.currentIK.lerpVectors(demo.currentIK, targetVec, 0.12);
+    }
+    if (step.gripper !== undefined) {
+      arm.gripperTarget = step.gripper;
+    }
+    if (step.kind === 'grip' && t > 0.4) {
+      if (step.pickProp !== undefined && !heldProp) {
+        heldProp = props[step.pickProp];
+        heldProp.grabbed = true;
+        if (audio.enabled) audio.clunk();
+      }
+      if (step.dropProp && heldProp) {
+        heldProp.grabbed = false;
+        heldProp.velY = 0;
+        // Snap to target zone (which is on the floor)
+        const tz = targetZone.group.position;
+        heldProp.mesh.position.set(tz.x, heldProp.floorY, tz.z);
+        heldProp = null;
+        targetZone.pulseT = 1.0;
+        if (audio.enabled) { audio.release(); setTimeout(() => audio.chime(), 250); }
+      }
+    }
+  } else if (step.kind === 'wave') {
+    // Lock arm into wave pose and oscillate wrist
+    arm.joints[0].target = 0;
+    arm.joints[1].target = 1.0;
+    arm.joints[2].target = -0.6;
+    arm.joints[3].target = -0.7;
+    arm.joints[4].target = Math.sin(elapsed * 0.012) * 0.7;
+  } else if (step.kind === 'wait') {
+    // do nothing
+  }
+
+  if (elapsed >= step.duration) {
+    demo.step++;
+    demo.stepStart = now;
+    if (audio.enabled) audio.click();
+    if (demo.step >= DEMO_SEQUENCE.length) {
+      stopDemo();
+    }
+  }
+}
+
+/* ============================================================
+   IK SOLVER (full-chain CCD targeting tip)
+   ============================================================ */
+const _ee = new THREE.Vector3();
+const _jp = new THREE.Vector3();
+const _toEnd = new THREE.Vector3();
+const _toTgt = new THREE.Vector3();
+const _localAxis = new THREE.Vector3();
+const _worldAxis = new THREE.Vector3();
+const _parentQ = new THREE.Quaternion();
+const _cross = new THREE.Vector3();
+const _eeProj = new THREE.Vector3();
+const _tgProj = new THREE.Vector3();
+
+function solveCCDForTip(target, iterations, stepLimit = 0.3, startJoint = 0) {
+  arm.root.updateMatrixWorld(true);
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = arm.joints.length - 1; i >= startJoint; i--) {
+      const j = arm.joints[i];
+      arm.tip.getWorldPosition(_ee);
+      j.obj.getWorldPosition(_jp);
+      _toEnd.subVectors(_ee, _jp);
+      _toTgt.subVectors(target, _jp);
+      if (_toEnd.lengthSq() < 1e-6 || _toTgt.lengthSq() < 1e-6) continue;
+      _toEnd.normalize(); _toTgt.normalize();
+
+      _localAxis.set(j.axis === 'x' ? 1 : 0, j.axis === 'y' ? 1 : 0, j.axis === 'z' ? 1 : 0);
+      j.obj.parent.getWorldQuaternion(_parentQ);
+      _worldAxis.copy(_localAxis).applyQuaternion(_parentQ).normalize();
+
+      _eeProj.copy(_toEnd).projectOnPlane(_worldAxis);
+      _tgProj.copy(_toTgt).projectOnPlane(_worldAxis);
+      if (_eeProj.lengthSq() < 1e-6 || _tgProj.lengthSq() < 1e-6) continue;
+      _eeProj.normalize(); _tgProj.normalize();
+
+      let angle = Math.acos(Math.max(-1, Math.min(1, _eeProj.dot(_tgProj))));
+      _cross.crossVectors(_eeProj, _tgProj);
+      if (_cross.dot(_worldAxis) < 0) angle = -angle;
+      angle = Math.max(-stepLimit, Math.min(stepLimit, angle));
+
+      let newTarget = j.target + angle;
+      newTarget = Math.max(j.min, Math.min(j.max, newTarget));
+      j.target = newTarget;
+      j.current += (newTarget - j.current) * 0.55;
+      j.obj.rotation[j.axis] = j.current;
+      arm.root.updateMatrixWorld(true);
+    }
+  }
+}
+
+function solveCCDForJoint(target, drivenIdx, iterations) {
+  const tool = arm.joints[drivenIdx].obj;
+  arm.root.updateMatrixWorld(true);
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = drivenIdx - 1; i >= 0; i--) {
+      const j = arm.joints[i];
+      tool.getWorldPosition(_ee);
+      j.obj.getWorldPosition(_jp);
+      _toEnd.subVectors(_ee, _jp);
+      _toTgt.subVectors(target, _jp);
+      if (_toEnd.lengthSq() < 1e-6 || _toTgt.lengthSq() < 1e-6) continue;
+      _toEnd.normalize(); _toTgt.normalize();
+      _localAxis.set(j.axis === 'x' ? 1 : 0, j.axis === 'y' ? 1 : 0, j.axis === 'z' ? 1 : 0);
+      j.obj.parent.getWorldQuaternion(_parentQ);
+      _worldAxis.copy(_localAxis).applyQuaternion(_parentQ).normalize();
+      _eeProj.copy(_toEnd).projectOnPlane(_worldAxis);
+      _tgProj.copy(_toTgt).projectOnPlane(_worldAxis);
+      if (_eeProj.lengthSq() < 1e-6 || _tgProj.lengthSq() < 1e-6) continue;
+      _eeProj.normalize(); _tgProj.normalize();
+      let angle = Math.acos(Math.max(-1, Math.min(1, _eeProj.dot(_tgProj))));
+      _cross.crossVectors(_eeProj, _tgProj);
+      if (_cross.dot(_worldAxis) < 0) angle = -angle;
+      angle = Math.max(-0.5, Math.min(0.5, angle));
+      let newTarget = j.target + angle;
+      newTarget = Math.max(j.min, Math.min(j.max, newTarget));
+      j.target = newTarget;
+      j.current += (newTarget - j.current) * 0.6;
+      j.obj.rotation[j.axis] = j.current;
+      arm.root.updateMatrixWorld(true);
+    }
+  }
+}
+
+/* ============================================================
+   ANIMATE
+   ============================================================ */
+function animate() {
+  requestAnimationFrame(animate);
+  if (!scene) return;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  const now = performance.now();
+
+  fpsCounter.frames++;
+  if (now - fpsCounter.last >= 1000) {
+    fpsCounter.fps = fpsCounter.frames;
+    fpsCounter.frames = 0; fpsCounter.last = now;
+    if (fpsCounter.fps < 40) {
+      fpsCounter.lowFrames++;
+      if (fpsCounter.lowFrames >= 2 && renderer.getPixelRatio() > 1) renderer.setPixelRatio(1);
+    } else fpsCounter.lowFrames = 0;
+  }
+
+  // Update demo state
+  if (demo.active) updateDemo(now);
+
+  if (armReady) {
+    if (drag.active && drag.joint >= 0) {
+      if (drag.joint === 0) {
+        const tgt = drag.targetWorld;
+        arm.joints[0].target = Math.atan2(tgt.x, tgt.z + 5);
+      } else {
+        solveCCDForJoint(drag.targetWorld, drag.joint, 5);
+      }
+    } else if (demo.active) {
+      // Demo mode IK target is demo.currentIK
+      solveCCDForTip(demo.currentIK, 3, 0.3);
+    } else if (armState === 'easter') {
+      // Easter wave handles target directly
+    } else if (armState === 'transform') {
+      // During transformation - freeze arm at last position, don't track
+    } else {
+      // Tracking - cursor follows
+      const shoulderWorld = new THREE.Vector3();
+      arm.joints[1].obj.getWorldPosition(shoulderWorld);
+      const tgt = mouse.target3D.clone();
+      const dir = tgt.clone().sub(shoulderWorld);
+      if (dir.length() > MAX_REACH) { dir.setLength(MAX_REACH); tgt.copy(shoulderWorld).add(dir); }
+      solveCCDForTip(tgt, 3, 0.3);
+      idleTime += dt;
+    }
+  }
+
+  // Joint damping
+  let totalDelta = 0;
+  arm.joints.forEach((j, i) => {
+    let breathing = 0;
+    if (!drag.active && armReady && idleTime > 6 && armState === 'tracking') {
+      const swayAmt = Math.min(1, (idleTime - 6) * 0.3);
+      if (i === 0) breathing = Math.sin(t * 0.4) * 0.05 * swayAmt;
+      if (i === 1) breathing = Math.sin(t * 0.6) * 0.03 * swayAmt;
+      if (i === 2) breathing = Math.sin(t * 0.7 + 0.7) * 0.025 * swayAmt;
+    }
+    const target = j.target + breathing;
+    const k = drag.active ? 0.35 : 0.22;
+    const delta = (target - j.current) * k;
+    j.current += delta;
+    j.obj.rotation[j.axis] = j.current;
+    totalDelta += Math.abs(delta);
+  });
+  lastJointVelocity = totalDelta;
+  audio.updateMotion(lastJointVelocity * 12);
+
+  updateGripperFingers(dt);
+
+  // Update held prop position
+  if (heldProp) {
+    const tipWorld = new THREE.Vector3();
+    arm.tip.getWorldPosition(tipWorld);
+    // Place prop at gripper, slightly below tip (between fingers)
+    heldProp.mesh.position.lerp(new THREE.Vector3(tipWorld.x, tipWorld.y - 0.12, tipWorld.z), 0.4);
+    heldProp.ring.visible = false;
+  } else {
+    // Update non-held props: gravity & settle
+    props.forEach(p => {
+      if (p.grabbed) return;
+      const restY = getPropRestY(p);
+      if (p.mesh.position.y > restY + 0.001) {
+        p.velY -= 9.8 * dt * 0.4; // gravity
+        p.mesh.position.y += p.velY * dt;
+        if (p.mesh.position.y <= restY) {
+          p.mesh.position.y = restY;
+          if (Math.abs(p.velY) > 0.5 && audio.enabled) audio.clunk();
+          p.velY = 0;
+        }
+      }
+      // Hint ring follows prop, sits on whichever surface it's resting on
+      p.ring.position.x = p.mesh.position.x;
+      p.ring.position.z = p.mesh.position.z;
+      p.ring.position.y = isOnPlatform(p.mesh.position.x, p.mesh.position.z)
+        ? PLATFORM.topY + 0.002 : -0.99;
+      p.ring.visible = true;
+    });
+  }
+
+  // Idle rotation for resting props
+  props.forEach(p => {
+    if (!p.grabbed && p.mesh.position.y <= getPropRestY(p) + 0.001) {
+      if (p.type !== 'sphere') p.mesh.rotation.y += dt * 0.15;
+    }
+  });
+
+  // Grid + uniforms
+  if (gridFloor && gridFloor.material.uniforms) gridFloor.material.uniforms.uTime.value = t;
+
+  // Monitor wall - repaint each screen every 3rd frame
+  if (monitorScreens.length) {
+    monitorScreens.forEach(m => {
+      m.frame++;
+      if (m.frame % 3 === 0) {
+        drawMonitor(m.ctx, m.canvas.width, m.canvas.height, m.content, m.frame);
+        m.texture.needsUpdate = true;
+      }
+    });
+  }
+
+  // Second arm - gentle idle sway across all joints, never fully still
+  if (secondArm) {
+    secondArm.joints.forEach(j => {
+      j.obj.rotation[j.axis] = j.base + Math.sin(t * j.speed + j.phase) * j.amp;
+    });
+  }
+
+  // Sentinel mech idle - gentle core/eye pulse + subtle body bob
+  // Only when not transforming, so it doesn't fight the morph state.
+  if (robot && transformState.mode === 'idle') {
+    if (robot.coreHalo) robot.coreHalo.material.opacity = 0.35 + Math.sin(t * 1.8) * 0.12;
+    if (robot.eyeHalo)  robot.eyeHalo.material.opacity  = 0.4 + Math.sin(t * 2.2) * 0.15;
+    robot.root.position.y = robot.bobBase + Math.sin(t * 0.4) * 0.04;
+  }
+
+  // Transform state machine: robot ↔ drone with barcode scan
+  updateTransform(now, dt);
+  updateTransformParticles(dt);
+
+  // Particles
+  if (particles) {
+    const pos = particles.geometry.attributes.position.array;
+    const spd = particles.geometry.attributes.speed.array;
+    for (let i = 0; i < spd.length; i++) {
+      pos[i*3+1] += spd[i] * dt;
+      if (pos[i*3+1] > 5) { pos[i*3+1] = -1; pos[i*3] = (Math.random() - 0.5) * 12; }
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+    particles.rotation.y = t * 0.015;
+  }
+
+  // Tip pulse
+  if (arm.tip) {
+    const s = 1 + Math.sin(t * 3) * 0.15 + Math.min(lastJointVelocity * 6, 0.8);
+    arm.tip.scale.setScalar(Math.min(s, 2.2));
+  }
+
+  // Cards: orbital wobble around anchor + swing rotation. Motion damps when hovered.
+  cards3D.forEach((c, i) => {
+    const phase = i * Math.PI * 0.5;
+    const motionAmt = c.hovered ? 0.15 : 1.0;
+    const baseX = c.data.position[0], baseY = c.data.position[1], baseZ = c.data.position[2];
+    c.group.position.x = baseX + Math.cos(t * 0.35 + phase) * 0.08 * motionAmt;
+    c.group.position.y = baseY + Math.sin(t * 0.42 + phase) * 0.06 * motionAmt;
+    c.group.position.z = baseZ + Math.sin(t * 0.28 + phase * 1.3) * 0.05 * motionAmt;
+    c.group.rotation.y = Math.sin(t * 0.30 + phase) * 0.18 * motionAmt;
+    c.group.rotation.x = Math.sin(t * 0.24 + phase * 0.7) * 0.06 * motionAmt;
+    c.group.rotation.z = Math.sin(t * 0.20 + phase * 1.7) * 0.025 * motionAmt;
+  });
+
+  // Target zone pulse
+  if (targetZone) {
+    if (targetZone.pulseT > 0) {
+      targetZone.pulseT -= dt * 1.5;
+      const s = 1 + (1 - targetZone.pulseT) * 0.5;
+      targetZone.outerRing.scale.setScalar(s);
+      targetZone.outerRing.material.opacity = 0.55 * targetZone.pulseT;
+    } else {
+      targetZone.outerRing.scale.setScalar(1);
+      targetZone.outerRing.material.opacity = 0.55 + Math.sin(t * 2) * 0.1;
+    }
+  }
+
+  // Disco mode effects
+  if (disco.active) {
+    if (now - disco.lastFlash > 180) {
+      const hue = (now * 0.0008) % 1;
+      const col = new THREE.Color().setHSL(hue, 1.0, 0.5);
+      arm.tip.material.color.copy(col);
+      arm.tipHalo.material.color.copy(col);
+      if (arm.rimLight) arm.rimLight.intensity = 1.5 + Math.random() * 2.5;
+      disco.lastFlash = now;
+      if (audio.enabled && Math.random() < 0.3) audio.zap();
+    }
+  }
+
+  // Ambient camera breathing + smooth mouse parallax (only when not mid-transform)
+  if (transformState.mode === 'idle') {
+    camPtrX += (camPtrTX - camPtrX) * 0.04;
+    camPtrY += (camPtrTY - camPtrY) * 0.04;
+    const bx = Math.sin(t * 0.22) * 0.10 + camPtrX * 0.38;
+    const by = Math.sin(t * 0.17 + 1.3) * 0.06 - camPtrY * 0.22;
+    const bz = Math.sin(t * 0.13) * 0.08;
+    camera.position.set(bx, 1.5 + by, 5.6 + bz);
+    camera.lookAt(0, 0.6, 0);
+  }
+
+  updateReadouts();
+  if (composer) composer.render();
+  else renderer.render(scene, camera);
+}
+
+function updateReadouts() {
+  // HUD removed - function preserved as no-op in case future restoration needed
+}
+
+window.addEventListener('load', initThree);
+</script>
+</body>
+</html>
